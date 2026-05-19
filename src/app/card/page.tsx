@@ -235,46 +235,99 @@ export default function CardPage() {
           </div>
         </div>
 
-        {/* 命理规则层输出 */}
+        {/* 命理规则层输出 - 核心解读区 */}
         {card.strength && (
-          <div className="space-y-3 border-t border-ink-100 pt-6">
-            <div className="text-center">
-              <p className="text-[10px] text-ink-400 mb-2 font-light">日主旺衰</p>
-              <div className="inline-block px-4 py-1.5 bg-ink-50 rounded-sm">
-                <span className="text-sm text-ink-800 font-light">{card.strength.level}</span>
-                <span className="text-[10px] text-ink-400 ml-2 font-light">({Math.round(card.strength.score * 100)}%)</span>
+          <div className="space-y-4 border-t border-ink-200 pt-6 mt-2">
+            {/* 旺衰指示器 */}
+            <div className="bg-gradient-to-r from-ink-50 to-white rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-ink-500 tracking-wider font-light">日主旺衰</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-base font-medium ${
+                    card.strength.level.includes('旺') ? 'text-red-600' :
+                    card.strength.level.includes('弱') ? 'text-blue-600' :
+                    'text-emerald-600'
+                  }`}>
+                    {card.strength.level}
+                  </span>
+                  <span className="text-[10px] text-ink-400 font-light">
+                    {Math.round(card.strength.score * 100)}%
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-center gap-3 mt-2">
-                <span className={`text-[9px] ${card.strength.deLing ? 'text-ink-700' : 'text-ink-300'} font-light`}>得令</span>
-                <span className={`text-[9px] ${card.strength.deDi ? 'text-ink-700' : 'text-ink-300'} font-light`}>得地</span>
-                <span className={`text-[9px] ${card.strength.deSheng ? 'text-ink-700' : 'text-ink-300'} font-light`}>得生</span>
-                <span className={`text-[9px] ${card.strength.deZhu ? 'text-ink-700' : 'text-ink-300'} font-light`}>得助</span>
+              
+              {/* 旺衰条 */}
+              <div className="w-full h-1.5 bg-ink-100 rounded-full overflow-hidden flex">
+                <div 
+                  className={`h-full transition-all duration-500 ${
+                    card.strength.score > 0.6 ? 'bg-red-400' :
+                    card.strength.score < 0.4 ? 'bg-blue-400' :
+                    'bg-emerald-400'
+                  }`}
+                  style={{ width: `${Math.max(5, Math.min(95, card.strength.score * 100))}%` }}
+                />
+              </div>
+              
+              {/* 四得指标 */}
+              <div className="grid grid-cols-4 gap-1 pt-1">
+                {[['得令', card.strength.deLing], ['得地', card.strength.deDi], ['得生', card.strength.deSheng], ['得助', card.strength.deZhu]].map(([label, val]) => (
+                  <div key={String(label)} className="text-center py-1.5 rounded-sm bg-white/60">
+                    <span className={`text-[9px] font-medium ${val ? 'text-ink-700' : 'text-ink-300'}`}>{String(label)}</span>
+                  </div>
+                ))}
               </div>
             </div>
             
+            {/* 用神喜忌 */}
             {card.yongShen && (
-              <div className="text-center">
-                <p className="text-[10px] text-ink-400 mb-2 font-light">用神喜忌</p>
-                <p className="text-xs text-ink-600 font-light">{card.yongShen.reason}</p>
-                <div className="flex justify-center gap-2 mt-2">
-                  <span className="text-[10px] text-ink-700 font-light">用: {card.yongShen.yongShen.join(' ')}</span>
+              <div className="bg-gradient-to-r from-amber-50/50 to-orange-50/30 rounded-lg p-4 space-y-2">
+                <p className="text-[10px] text-amber-700 tracking-wider font-light">⚡ 用神喜忌</p>
+                <p className="text-xs text-amber-900/80 leading-relaxed font-light">{card.yongShen.reason}</p>
+                <div className="flex gap-3 pt-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] text-amber-600 font-light">喜：</span>
+                    <span className="text-[10px] text-amber-800 font-medium">{card.yongShen.yongShen.join(' ')}</span>
+                  </div>
+                  {card.yongShen.xiShen.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-stone-500 font-light">辅：</span>
+                      <span className="text-[10px] text-stone-600 font-light">{card.yongShen.xiShen.join(' ')}</span>
+                    </div>
+                  )}
                   {card.yongShen.jiShen.length > 0 && (
-                    <span className="text-[10px] text-ink-400 font-light">忌: {card.yongShen.jiShen.join(' ')}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-rose-400 font-light">忌：</span>
+                      <span className="text-[10px] text-rose-600 font-light">{card.yongShen.jiShen.join(' ')}</span>
+                    </div>
                   )}
                 </div>
               </div>
             )}
             
+            {/* 五行分布 */}
             {card.wuxingStrength && (
-              <div className="text-center">
-                <p className="text-[10px] text-ink-400 mb-2 font-light">五行分布</p>
-                <div className="flex justify-center gap-3">
-                  {Object.entries(card.wuxingStrength).map(([wx, val]) => (
-                    <div key={wx} className="flex flex-col items-center">
-                      <span className="text-[9px] text-ink-400 font-light">{wx}</span>
-                      <span className="text-[10px] text-ink-600 font-light">{Math.round(val * 100)}%</span>
-                    </div>
-                  ))}
+              <div className="rounded-lg p-4 space-y-2">
+                <p className="text-[10px] text-ink-500 tracking-wider font-light">五行力量分布</p>
+                <div className="space-y-1.5">
+                  {Object.entries(card.wuxingStrength).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([wx, val]) => {
+                    const pct = Math.round((val as number) * 100)
+                    const colorMap: Record<string, string> = {
+                      '木': 'bg-emerald-400', '火': 'bg-rose-400', '土': 'bg-amber-400',
+                      '金': 'bg-slate-400', '水': 'bg-blue-400'
+                    }
+                    return (
+                      <div key={wx} className="flex items-center gap-2">
+                        <span className="text-[9px] text-ink-500 w-3 font-light">{wx}</span>
+                        <div className="flex-1 h-1.5 bg-ink-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${colorMap[wx] || 'bg-ink-300'}`}
+                            style={{ width: `${Math.max(2, pct)}%` }}
+                          />
+                        </div>
+                        <span className="text-[9px] text-ink-400 w-7 text-right font-light">{pct}%</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}

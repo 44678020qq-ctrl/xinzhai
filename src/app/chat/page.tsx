@@ -135,8 +135,8 @@ export default function ChatPage() {
 
   return (
     <main className="flex flex-col h-screen max-w-sm mx-auto">
-      {/* 顶部 */}
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-ink-100">
+      {/* 顶部 - 命局信息栏 */}
+      <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-ink-50 to-white border-b border-ink-100">
         <button
           onClick={() => router.push("/match")}
           className="text-[10px] text-ink-400 hover:text-ink-700 transition-colors font-light"
@@ -144,14 +144,25 @@ export default function ChatPage() {
           ← 返回
         </button>
         <div className="flex-1 text-center flex flex-col items-center gap-0.5">
-          <span className="text-xs text-ink-700 tracking-wider font-light">
-            {chatTarget?.name || "心斋对话"}
+          <span className="text-xs text-ink-800 tracking-wider font-medium">
+            {bazi?.dayMasterGan || ''}{bazi?.dayMaster || '命理'}对话
           </span>
-          {chatTarget?.wuxing && (
-            <span className="text-[9px] text-ink-400 font-light">
-              {chatTarget.wuxing} · 日主
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {bazi?.strength && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-light ${
+                bazi.strength.level.includes('旺') ? 'bg-red-50 text-red-600' :
+                bazi.strength.level.includes('弱') ? 'bg-blue-50 text-blue-600' :
+                'bg-emerald-50 text-emerald-600'
+              }`}>
+                {bazi.strength.level}
+              </span>
+            )}
+            {bazi?.yongShen && (
+              <span className="text-[9px] text-ink-500 font-light">
+                用{bazi.yongShen.yongShen.join('')}
+              </span>
+            )}
+          </div>
         </div>
         <div className="w-8" />
       </div>
