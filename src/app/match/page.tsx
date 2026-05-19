@@ -130,8 +130,12 @@ export default function MatchPage() {
     import("@/lib/bazi").then((mod) => {
       const form = JSON.parse(raw);
       const bazi = mod.calculateBazi(
-        parseInt(form.year), parseInt(form.month), parseInt(form.day),
-        form.hour ? form.hour.replace(/[（）时]/g, "") : undefined
+        parseInt(form.birth_year),
+        parseInt(form.birth_month),
+        parseInt(form.birth_day),
+        form.birth_hour ? parseInt(form.birth_hour) : undefined,
+        form.birth_minute ? parseInt(form.birth_minute) : undefined,
+        form.is_lunar || false
       );
       const wx = mod.getDayMasterWuxing(bazi);
       setMyWx(wx);
