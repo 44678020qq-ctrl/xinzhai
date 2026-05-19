@@ -65,8 +65,12 @@ export function calculateBazi(
     lunar = Lunar.fromYmd(year, month, day);
     solar = lunar.getSolar();
   } else {
-    // 公历输入
-    solar = Solar.fromYmd(year, month, day);
+    // 公历输入 — 必须传入时间，否则时柱永远是甲子
+    if (hour !== null && hour !== undefined) {
+      solar = Solar.fromYmdHms(year, month, day, hour, minute || 0, 0);
+    } else {
+      solar = Solar.fromYmd(year, month, day);
+    }
     lunar = Lunar.fromSolar(solar);
   }
 
@@ -93,11 +97,9 @@ export function calculateBazi(
     dayZhi,
   };
 
-  // 时柱（如果提供了时辰）
+  // 时柱 — lunar-javascript 根据 Solar 创建时的时间自动计算
   if (hour !== null && hour !== undefined) {
-    // 数字小时（0-23）→ 时辰索引（0=子时 23-1, 1=丑时 1-3 ... 11=亥时 21-23）
-    const hourIndex = hour === 23 || hour === 0 ? 0 : Math.floor((hour + 1) / 2);
-    const hourGanZhi = lunar.getTimeInGanZhi(hourIndex);
+    const hourGanZhi = lunar.getTimeInGanZhi();
     result.hour = pillarFromGanZhi(hourGanZhi[0], hourGanZhi[1]);
   }
 

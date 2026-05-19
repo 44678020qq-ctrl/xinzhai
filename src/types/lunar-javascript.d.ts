@@ -11,7 +11,7 @@ declare module 'lunar-javascript' {
     getYearInGanZhi(): string;   // 返回 "甲子" 格式
     getMonthInGanZhi(): string;
     getDayInGanZhi(): string;
-    getTimeInGanZhi(hourIndex: number): string;
+    getTimeInGanZhi(hourIndex?: number): string;
     getSolar(): Solar;
   }
 }
