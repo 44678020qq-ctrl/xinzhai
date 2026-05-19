@@ -8,6 +8,8 @@ interface Message {
   from: "me" | "other";
   text: string;
   time: string;
+  reasoning?: Array<{step: string, content: string}>;
+  verdict?: string;
 }
 
 interface ChatTarget {
@@ -16,11 +18,21 @@ interface ChatTarget {
   wuxing: string;
 }
 
+interface BaziInfo {
+  dayMaster: string;
+  dayMasterGan: string;
+  strength: {level: string, score: number};
+  yongShen: {yongShen: string[], reason: string};
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [chatTarget, setChatTarget] = useState<ChatTarget | null>(null);
+  const [bazi, setBazi] = useState<BaziInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showReasoning, setShowReasoning] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,25 +42,45 @@ export default function ChatPage() {
       setChatTarget(JSON.parse(raw));
     }
 
-    // V1 mock 初始消息
-    const now = new Date();
-    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-    setMessages([
-      {
-        id: "m1",
-        from: "other",
-        text: "你好，共鸣卡已收到。你的八字气质很特别。",
-        time,
-      },
-    ]);
+    // 读取八字信息
+    const baziRaw = sessionStorage.getItem("xinzhai_bazi");
+    if (baziRaw) {
+      const parsed = JSON.parse(baziRaw);
+      setBazi(parsed);
+      
+      // AI 初始消息
+      const now = new Date();
+      const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+      const initMsg = `你好，我是心斋。我看到你的命局 —— ${parsed.dayMasterGan}${parsed.dayMaster}日主，${parsed.strength?.level || "中和"}。有什么想聊的？`;
+      
+      setMessages([
+        {
+          id: "m1",
+          from: "other",
+          text: initMsg,
+          time,
+        },
+      ]);
+    } else {
+      const now = new Date();
+      const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+      setMessages([
+        {
+          id: "m1",
+          from: "other",
+          text: "你好，我是心斋。有什么想聊的？",
+          time,
+        },
+      ]);
+    }
   }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
     const now = new Date();
     const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
     const newMsg: Message = {
@@ -59,24 +91,46 @@ export default function ChatPage() {
     };
     setMessages((prev) => [...prev, newMsg]);
     setInput("");
+    setLoading(true);
 
-    // 模拟对方回复
-    setTimeout(() => {
-      const replies = [
-        "嗯，我能感受到你说的是什么。",
-        "这个角度很有意思。",
-        "继续聊，我在听。",
-        "八字里的这个组合，确实会让人这样想。",
-        "你的表达方式很特别。",
-      ];
+    try {
+      // 调用 AI 对话 API
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: input.trim(),
+          bazi: bazi,
+          history: messages.slice(-10).map(m => ({
+            role: m.from === "me" ? "user" : "assistant",
+            content: m.text
+          }))
+        })
+      });
+      
+      const data = await res.json();
+      
       const reply: Message = {
         id: `msg_${Date.now() + 1}`,
         from: "other",
-        text: replies[Math.floor(Math.random() * replies.length)],
+        text: data.reply,
         time: `${new Date().getHours().toString().padStart(2, "0")}:${new Date().getMinutes().toString().padStart(2, "0")}`,
+        reasoning: data.reasoning,
+        verdict: data.verdict
       };
       setMessages((prev) => [...prev, reply]);
-    }, 1500 + Math.random() * 1000);
+    } catch (error) {
+      console.error("对话失败:", error);
+      const errorMsg: Message = {
+        id: `msg_${Date.now() + 1}`,
+        from: "other",
+        text: "抱歉，我需要想一下。能再说一遍吗？",
+        time: `${new Date().getHours().toString().padStart(2, "0")}:${new Date().getMinutes().toString().padStart(2, "0")}`,
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -91,7 +145,7 @@ export default function ChatPage() {
         </button>
         <div className="flex-1 text-center flex flex-col items-center gap-0.5">
           <span className="text-xs text-ink-700 tracking-wider font-light">
-            {chatTarget?.name || "共鸣对话"}
+            {chatTarget?.name || "心斋对话"}
           </span>
           {chatTarget?.wuxing && (
             <span className="text-[9px] text-ink-400 font-light">
@@ -107,7 +161,7 @@ export default function ChatPage() {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.from === "me" ? "justify-end" : "justify-start"}`}
+            className={`flex flex-col ${msg.from === "me" ? "items-end" : "items-start"}`}
           >
             <div
               className={`max-w-[75%] px-4 py-2.5 text-xs leading-relaxed font-light ${
@@ -125,8 +179,38 @@ export default function ChatPage() {
                 {msg.time}
               </p>
             </div>
+            {/* 推理链展示 */}
+            {msg.from === "other" && msg.reasoning && msg.reasoning.length > 0 && (
+              <button
+                onClick={() => setShowReasoning(showReasoning === msg.id ? null : msg.id)}
+                className="text-[9px] text-ink-400 mt-1 hover:text-ink-600 transition-colors font-light"
+              >
+                {showReasoning === msg.id ? "隐藏推理 ▴" : "查看推理 ▾"}
+              </button>
+            )}
+            {msg.from === "other" && showReasoning === msg.id && msg.reasoning && (
+              <div className="max-w-[75%] mt-1 px-3 py-2 bg-ink-50/50 rounded text-[9px] text-ink-600 font-light space-y-1">
+                {msg.reasoning.map((r, i) => (
+                  <p key={i}>
+                    <span className="text-ink-400">{r.step}:</span> {r.content}
+                  </p>
+                ))}
+                {msg.verdict && (
+                  <p className="pt-1 border-t border-ink-200 text-ink-700">
+                    <span className="font-medium">结论:</span> {msg.verdict}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="max-w-[75%] px-4 py-2.5 bg-ink-50 text-ink-400 rounded text-xs font-light">
+              思考中...
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
@@ -135,13 +219,14 @@ export default function ChatPage() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          onKeyDown={(e) => e.key === "Enter" && !loading && handleSend()}
           placeholder="输入消息…"
-          className="flex-1 bg-transparent text-xs text-ink-800 placeholder:text-ink-300 focus:outline-none font-light"
+          disabled={loading}
+          className="flex-1 bg-transparent text-xs text-ink-800 placeholder:text-ink-300 focus:outline-none font-light disabled:opacity-50"
         />
         <button
           onClick={handleSend}
-          disabled={!input.trim()}
+          disabled={!input.trim() || loading}
           className="text-[10px] text-ink-500 hover:text-ink-800 transition-colors disabled:opacity-30 font-light tracking-wider"
         >
           发送

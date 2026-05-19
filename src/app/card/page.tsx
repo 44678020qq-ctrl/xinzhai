@@ -13,6 +13,21 @@ interface CardData {
   social_tendency: string;
   summary: string;
   bazi_display: string;
+  strength?: {
+    level: string;
+    score: number;
+    deLing: boolean;
+    deDi: boolean;
+    deSheng: boolean;
+    deZhu: boolean;
+  };
+  yongShen?: {
+    yongShen: string[];
+    xiShen: string[];
+    jiShen: string[];
+    reason: string;
+  };
+  wuxingStrength?: Record<string, number>;
 }
 
 interface BaziResult {
@@ -219,6 +234,52 @@ export default function CardPage() {
             <p>{card.social_tendency}</p>
           </div>
         </div>
+
+        {/* 命理规则层输出 */}
+        {card.strength && (
+          <div className="space-y-3 border-t border-ink-100 pt-6">
+            <div className="text-center">
+              <p className="text-[10px] text-ink-400 mb-2 font-light">日主旺衰</p>
+              <div className="inline-block px-4 py-1.5 bg-ink-50 rounded-sm">
+                <span className="text-sm text-ink-800 font-light">{card.strength.level}</span>
+                <span className="text-[10px] text-ink-400 ml-2 font-light">({Math.round(card.strength.score * 100)}%)</span>
+              </div>
+              <div className="flex justify-center gap-3 mt-2">
+                <span className={`text-[9px] ${card.strength.deLing ? 'text-ink-700' : 'text-ink-300'} font-light`}>得令</span>
+                <span className={`text-[9px] ${card.strength.deDi ? 'text-ink-700' : 'text-ink-300'} font-light`}>得地</span>
+                <span className={`text-[9px] ${card.strength.deSheng ? 'text-ink-700' : 'text-ink-300'} font-light`}>得生</span>
+                <span className={`text-[9px] ${card.strength.deZhu ? 'text-ink-700' : 'text-ink-300'} font-light`}>得助</span>
+              </div>
+            </div>
+            
+            {card.yongShen && (
+              <div className="text-center">
+                <p className="text-[10px] text-ink-400 mb-2 font-light">用神喜忌</p>
+                <p className="text-xs text-ink-600 font-light">{card.yongShen.reason}</p>
+                <div className="flex justify-center gap-2 mt-2">
+                  <span className="text-[10px] text-ink-700 font-light">用: {card.yongShen.yongShen.join(' ')}</span>
+                  {card.yongShen.jiShen.length > 0 && (
+                    <span className="text-[10px] text-ink-400 font-light">忌: {card.yongShen.jiShen.join(' ')}</span>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {card.wuxingStrength && (
+              <div className="text-center">
+                <p className="text-[10px] text-ink-400 mb-2 font-light">五行分布</p>
+                <div className="flex justify-center gap-3">
+                  {Object.entries(card.wuxingStrength).map(([wx, val]) => (
+                    <div key={wx} className="flex flex-col items-center">
+                      <span className="text-[9px] text-ink-400 font-light">{wx}</span>
+                      <span className="text-[10px] text-ink-600 font-light">{Math.round(val * 100)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 一句话总结 */}
         <div className="text-center border-t border-ink-100 pt-6">

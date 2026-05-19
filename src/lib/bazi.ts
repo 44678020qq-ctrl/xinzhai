@@ -190,6 +190,227 @@ export function wuxingToPersonality(wuxing: string, gan: string): string {
   return map[wuxing]?.[gan] || `${gan}${wuxing}`;
 }
 
+// ==================== 命理规则层 MVP ====================
+
+/**
+ * M2: 地支藏干表（核心数据）
+ * 本气(1.0) / 中气(0.5) / 余气(0.3)
+ */
+export const HIDDEN_STEMS: Record<string, Array<{gan: string, type: string, weight: number}>> = {
+  "子": [{gan: "癸", type: "本气", weight: 1.0}],
+  "丑": [{gan: "己", type: "本气", weight: 1.0}, {gan: "癸", type: "中气", weight: 0.5}, {gan: "辛", type: "余气", weight: 0.3}],
+  "寅": [{gan: "甲", type: "本气", weight: 1.0}, {gan: "丙", type: "中气", weight: 0.5}, {gan: "戊", type: "余气", weight: 0.3}],
+  "卯": [{gan: "乙", type: "本气", weight: 1.0}],
+  "辰": [{gan: "戊", type: "本气", weight: 1.0}, {gan: "乙", type: "中气", weight: 0.5}, {gan: "癸", type: "余气", weight: 0.3}],
+  "巳": [{gan: "丙", type: "本气", weight: 1.0}, {gan: "戊", type: "中气", weight: 0.5}, {gan: "庚", type: "余气", weight: 0.3}],
+  "午": [{gan: "丁", type: "本气", weight: 1.0}, {gan: "己", type: "中气", weight: 0.5}],
+  "未": [{gan: "己", type: "本气", weight: 1.0}, {gan: "丁", type: "中气", weight: 0.5}, {gan: "乙", type: "余气", weight: 0.3}],
+  "申": [{gan: "庚", type: "本气", weight: 1.0}, {gan: "壬", type: "中气", weight: 0.5}, {gan: "戊", type: "余气", weight: 0.3}],
+  "酉": [{gan: "辛", type: "本气", weight: 1.0}],
+  "戌": [{gan: "戊", type: "本气", weight: 1.0}, {gan: "辛", type: "中气", weight: 0.5}, {gan: "丁", type: "余气", weight: 0.3}],
+  "亥": [{gan: "壬", type: "本气", weight: 1.0}, {gan: "甲", type: "中气", weight: 0.5}],
+};
+
+/**
+ * M3: 旺相休囚死表（季节性系数）
+ * 每个季节：旺×1.3 / 相×1.1 / 休×0.9 / 囚×0.7 / 死×0.5
+ */
+export const SEASON_STRENGTH: Record<string, Record<string, number>> = {
+  // 春（寅卯月）：木旺火相水休金囚土死
+  "寅": {"木": 1.3, "火": 1.1, "水": 0.9, "金": 0.7, "土": 0.5},
+  "卯": {"木": 1.3, "火": 1.1, "水": 0.9, "金": 0.7, "土": 0.5},
+  // 夏（巳午月）：火旺土相木休水囚金死
+  "巳": {"火": 1.3, "土": 1.1, "木": 0.9, "水": 0.7, "金": 0.5},
+  "午": {"火": 1.3, "土": 1.1, "木": 0.9, "水": 0.7, "金": 0.5},
+  // 秋（申酉月）：金旺水相土休火囚木死
+  "申": {"金": 1.3, "水": 1.1, "土": 0.9, "火": 0.7, "木": 0.5},
+  "酉": {"金": 1.3, "水": 1.1, "土": 0.9, "火": 0.7, "木": 0.5},
+  // 冬（亥子月）：水旺木相金休土囚火死
+  "亥": {"水": 1.3, "木": 1.1, "金": 0.9, "土": 0.7, "火": 0.5},
+  "子": {"水": 1.3, "木": 1.1, "金": 0.9, "土": 0.7, "火": 0.5},
+  // 四季月（辰戌丑未）：土旺金相火休木囚水死
+  "辰": {"土": 1.3, "金": 1.1, "火": 0.9, "木": 0.7, "水": 0.5},
+  "戌": {"土": 1.3, "金": 1.1, "火": 0.9, "木": 0.7, "水": 0.5},
+  "丑": {"土": 1.3, "金": 1.1, "火": 0.9, "木": 0.7, "水": 0.5},
+  "未": {"土": 1.3, "金": 1.1, "火": 0.9, "木": 0.7, "水": 0.5},
+};
+
+/**
+ * M3: 五行力量计算（核心算法）
+ * 综合考虑：藏干权重 + 月令加权 + 季节系数
+ */
+export function calculateWuxingStrength(bazi: BaziResult): {
+  wuxing: Record<string, number>;
+  normalized: Record<string, number>;
+  monthCommand: string;
+  breakdown: Array<{source: string, wuxing: string, raw: number, weighted: number}>;
+} {
+  const counts: Record<string, number> = {"木": 0, "火": 0, "土": 0, "金": 0, "水": 0};
+  const breakdown: Array<{source: string, wuxing: string, raw: number, weighted: number}> = [];
+  
+  // 获取季节系数（基于月支）
+  const monthZhi = bazi.month.zhi;
+  const seasonCoeff = SEASON_STRENGTH[monthZhi] || {"木": 1, "火": 1, "土": 1, "金": 1, "水": 1};
+  
+  // 月令五行（提纲）
+  const monthCommand = ZHI_WUXING[monthZhi];
+  
+  // 位置系数（月令最大）
+  const positionCoeff = {
+    year: 0.8,
+    month: 1.5,  // 月令加权
+    day: 1.0,
+    hour: 0.9
+  };
+  
+  // 遍历四柱
+  const pillars = [
+    {key: "year", pillar: bazi.year},
+    {key: "month", pillar: bazi.month},
+    {key: "day", pillar: bazi.day},
+    {key: "hour", pillar: bazi.hour},
+  ];
+  
+  for (const {key, pillar} of pillars) {
+    if (!pillar) continue;
+    
+    // 天干
+    const ganWx = GAN_WUXING[pillar.gan];
+    const ganWeight = 1.0 * (seasonCoeff[ganWx] || 1) * (positionCoeff[key as keyof typeof positionCoeff] || 1);
+    counts[ganWx] += ganWeight;
+    breakdown.push({source: `${key}干${pillar.gan}`, wuxing: ganWx, raw: 1.0, weighted: ganWeight});
+    
+    // 地支藏干
+    const hidden = HIDDEN_STEMS[pillar.zhi] || [];
+    for (const h of hidden) {
+      const hWx = GAN_WUXING[h.gan];
+      const hWeight = h.weight * (seasonCoeff[hWx] || 1) * (positionCoeff[key as keyof typeof positionCoeff] || 1);
+      counts[hWx] += hWeight;
+      breakdown.push({source: `${key}支${pillar.zhi}藏${h.gan}`, wuxing: hWx, raw: h.weight, weighted: hWeight});
+    }
+  }
+  
+  // 归一化
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const normalized: Record<string, number> = {};
+  for (const [k, v] of Object.entries(counts)) {
+    normalized[k] = Math.round((v / total) * 100) / 100;
+  }
+  
+  return {wuxing: counts, normalized, monthCommand, breakdown};
+}
+
+/**
+ * M4: 日主旺衰判断（7级）
+ * 综合帮扶力 vs 克泄耗力
+ */
+export function judgeStrength(bazi: BaziResult): {
+  level: "极旺" | "旺" | "偏旺" | "中和" | "偏弱" | "弱" | "极弱";
+  score: number;
+  deLing: boolean;  // 得令
+  deDi: boolean;    // 得地
+  deSheng: boolean; // 得生
+  deZhu: boolean;   // 得助
+} {
+  const dayMasterWx = bazi.day.wuxing_gan;
+  const wxStrength = calculateWuxingStrength(bazi);
+  
+  // 五行循环
+  const cycle = ["木", "火", "土", "金", "水"];
+  const idx = cycle.indexOf(dayMasterWx);
+  
+  // 帮扶 = 同类(比劫) + 生我(印)
+  const tongLei = dayMasterWx;
+  const shengWo = cycle[(idx + 4) % 5];
+  
+  // 克泄耗 = 克我(官杀) + 我生(食伤) + 我克(财)
+  const keWo = cycle[(idx + 3) % 5];
+  const woSheng = cycle[(idx + 1) % 5];
+  const woKe = cycle[(idx + 2) % 5];
+  
+  const help = wxStrength.wuxing[tongLei] + wxStrength.wuxing[shengWo];
+  const exhaust = wxStrength.wuxing[keWo] + wxStrength.wuxing[woSheng] + wxStrength.wuxing[woKe];
+  
+  const ratio = help / (help + exhaust);
+  
+  // 得令：日主是否生在当令月份
+  const deLing = wxStrength.monthCommand === dayMasterWx;
+  
+  // 得地：地支是否有本气根
+  const deDi = [bazi.year.zhi, bazi.month.zhi, bazi.day.zhi, bazi.hour?.zhi]
+    .filter(Boolean)
+    .some(zhi => {
+      const hidden = HIDDEN_STEMS[zhi] || [];
+      return hidden.some(h => h.gan === bazi.dayGan && h.type === "本气");
+    });
+  
+  // 得生：印星是否透干或有力
+  const deSheng = wxStrength.wuxing[shengWo] > 1.5;
+  
+  // 得助：比劫是否透干或有力
+  const deZhu = wxStrength.wuxing[tongLei] > 1.5;
+  
+  // 判断等级
+  let level: "极旺" | "旺" | "偏旺" | "中和" | "偏弱" | "弱" | "极弱";
+  if (ratio > 0.70) level = "极旺";
+  else if (ratio > 0.58) level = "旺";
+  else if (ratio > 0.52) level = "偏旺";
+  else if (ratio > 0.48) level = "中和";
+  else if (ratio > 0.42) level = "偏弱";
+  else if (ratio > 0.30) level = "弱";
+  else level = "极弱";
+  
+  return {level, score: Math.round(ratio * 100) / 100, deLing, deDi, deSheng, deZhu};
+}
+
+/**
+ * M6: 用神喜忌（简化版）
+ * 基于旺衰判断用神方向
+ */
+export function findYongShen(bazi: BaziResult): {
+  yongShen: string[];
+  xiShen: string[];
+  jiShen: string[];
+  reason: string;
+} {
+  const strength = judgeStrength(bazi);
+  const dayMasterWx = bazi.day.wuxing_gan;
+  const cycle = ["木", "火", "土", "金", "水"];
+  const idx = cycle.indexOf(dayMasterWx);
+  
+  const tongLei = dayMasterWx;
+  const shengWo = cycle[(idx + 4) % 5];
+  const keWo = cycle[(idx + 3) % 5];
+  const woSheng = cycle[(idx + 1) % 5];
+  const woKe = cycle[(idx + 2) % 5];
+  
+  if (strength.level === "极弱" || strength.level === "弱" || strength.level === "偏弱") {
+    // 身弱：用印比
+    return {
+      yongShen: [shengWo, tongLei],
+      xiShen: [woSheng],  // 食伤泄秀
+      jiShen: [keWo, woKe],
+      reason: `日主${strength.level}，需${shengWo}生扶、${tongLei}帮身`
+    };
+  } else if (strength.level === "极旺" || strength.level === "旺" || strength.level === "偏旺") {
+    // 身旺：用克泄耗
+    return {
+      yongShen: [keWo, woSheng, woKe],
+      xiShen: [],
+      jiShen: [shengWo, tongLei],
+      reason: `日主${strength.level}，需${keWo}克制、${woSheng}泄秀、${woKe}消耗`
+    };
+  } else {
+    // 中和：看趋势
+    return {
+      yongShen: [woSheng],
+      xiShen: [shengWo, tongLei],
+      jiShen: [keWo],
+      reason: `日主${strength.level}，顺势而为，以${woSheng}泄秀为用`
+    };
+  }
+}
+
 /** 生成给 AI 用的 prompt */
 export function baziToPrompt(bazi: BaziResult, gender: "male" | "female"): string {
   const hourStr = bazi.hour

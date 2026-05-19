@@ -74,7 +74,7 @@ export default function RegisterPage() {
 
       if (profileError) throw profileError
 
-      // 保存到 sessionStorage 供 /card 页面使用
+      // 保存到 sessionStorage 供 /card 和 /chat 页面使用
       sessionStorage.setItem('xinzhai_birth', JSON.stringify({
         birth_year: formData.birth_year,
         birth_month: formData.birth_month,
@@ -83,6 +83,14 @@ export default function RegisterPage() {
         birth_minute: formData.birth_minute,
         gender: formData.gender,
         is_lunar: formData.is_lunar
+      }))
+      
+      // 保存八字信息供 chat 使用
+      sessionStorage.setItem('xinzhai_bazi', JSON.stringify({
+        dayMaster: bazi.day.wuxing_gan,
+        dayMasterGan: bazi.dayGan,
+        strength: bazi.strength,
+        yongShen: bazi.yongShen
       }))
 
       // 跳转到卡片页
