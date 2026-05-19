@@ -127,7 +127,7 @@ export default function MatchPage() {
     const raw = sessionStorage.getItem("xinzhai_birth");
     if (!raw) { router.push("/input"); return; }
 
-    import("@/lib/bazi").then((mod) => {
+    import("@/lib/bazi").then(async (mod) => {
       const form = JSON.parse(raw);
       const bazi = mod.calculateBazi(
         parseInt(form.birth_year),
@@ -140,20 +140,64 @@ export default function MatchPage() {
       const wx = mod.getDayMasterWuxing(bazi);
       setMyWx(wx);
 
-      const pool = generateMockPool();
-      const results: MatchResult[] = pool.map((p) => ({
-        id: p.id,
-        wuxing_personality: p.wuxing_personality,
-        summary: p.summary,
-        keywords: p.keywords,
-        bazi_display: p.bazi_display,
-        dayMaster: p.dayMaster,
-        compatibility: calcCompatibility(wx, p.dayMaster),
-        reason: getCompatibilityReason(wx, p.dayMaster, p.wuxing_personality),
-      }));
+      // 尝试从 Supabase 获取真实用户
+      try {
+        const { supabase } = await import("@/lib/supabase");
+        const { data: realUsers, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .neq('day_master_wuxing', null)
+          .limit(20);
+        
+        let pool: MockProfile[];
+        if (realUsers && realUsers.length > 1) {
+          // 使用真实用户（排除自己）
+          const { data: { user } } = await supabase.auth.getUser();
+          pool = realUsers
+            .filter(u => u.id !== user?.id)
+            .map(u => ({
+              id: u.id,
+              wuxing_personality: `${u.bazi_day_gan || '?'}${u.day_master_wuxing || '?'}`,
+              dayMaster: u.day_master_wuxing || '未知',
+              summary: u.personality_tags?.join('、') || `${u.name || '匿名'}的命局`,
+              keywords: (u.personality_tags as string[]) || [u.day_master_wuxing || '未知'],
+              bazi_display: `${u.bazi_year_gan || '?'}${u.bazi_year_zhi || '?'} ${u.bazi_month_gan || '?'}${u.bazi_month_zhi || '?'} ${u.bazi_day_gan || '?'}${u.bazi_day_zhi || '?'}`,
+            }));
+        } else {
+          // Fallback 到 mock 数据
+          pool = generateMockPool();
+        }
+        
+        const results: MatchResult[] = pool.map((p) => ({
+          id: p.id,
+          wuxing_personality: p.wuxing_personality,
+          summary: p.summary,
+          keywords: p.keywords,
+          bazi_display: p.bazi_display,
+          dayMaster: p.dayMaster,
+          compatibility: calcCompatibility(wx, p.dayMaster),
+          reason: getCompatibilityReason(wx, p.dayMaster, p.wuxing_personality),
+        }));
 
-      results.sort((a, b) => b.compatibility - a.compatibility);
-      setMatches(results);
+        results.sort((a, b) => b.compatibility - a.compatibility);
+        setMatches(results);
+      } catch (e) {
+        // Supabase 查询失败，使用 mock
+        console.warn('Supabase 查询失败，使用 mock 数据:', e);
+        const pool = generateMockPool();
+        const results: MatchResult[] = pool.map((p) => ({
+          id: p.id,
+          wuxing_personality: p.wuxing_personality,
+          summary: p.summary,
+          keywords: p.keywords,
+          bazi_display: p.bazi_display,
+          dayMaster: p.dayMaster,
+          compatibility: calcCompatibility(wx, p.dayMaster),
+          reason: getCompatibilityReason(wx, p.dayMaster, p.wuxing_personality),
+        }));
+        results.sort((a, b) => b.compatibility - a.compatibility);
+        setMatches(results);
+      }
       setLoading(false);
     });
   }, [router]);

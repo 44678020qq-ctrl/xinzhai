@@ -340,6 +340,7 @@ export function judgeStrength(bazi: BaziResult): {
   const deDi = [bazi.year.zhi, bazi.month.zhi, bazi.day.zhi, bazi.hour?.zhi]
     .filter(Boolean)
     .some(zhi => {
+      if (!zhi) return false;
       const hidden = HIDDEN_STEMS[zhi] || [];
       return hidden.some(h => h.gan === bazi.dayGan && h.type === "本气");
     });

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { calculateBazi } from '@/lib/bazi'
+import { calculateBazi, judgeStrength, findYongShen } from '@/lib/bazi'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -86,11 +86,13 @@ export default function RegisterPage() {
       }))
       
       // 保存八字信息供 chat 使用
+      const strength = judgeStrength(bazi)
+      const yongShen = findYongShen(bazi)
       sessionStorage.setItem('xinzhai_bazi', JSON.stringify({
         dayMaster: bazi.day.wuxing_gan,
         dayMasterGan: bazi.dayGan,
-        strength: bazi.strength,
-        yongShen: bazi.yongShen
+        strength,
+        yongShen
       }))
 
       // 跳转到卡片页
