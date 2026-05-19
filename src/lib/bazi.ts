@@ -52,12 +52,23 @@ export function calculateBazi(
   year: number,
   month: number,
   day: number,
-  hourStr?: string
+  hour?: number | null,
+  minute?: number | null,
+  isLunar: boolean = false
 ): BaziResult {
-  // 1. 先创建 Solar 对象（lunar-javascript 正确用法）
-  const solar = Solar.fromYmd(year, month, day);
-  // 2. 再转换为 Lunar 对象
-  const lunar = Lunar.fromSolar(solar);
+  // 1. 创建 Solar 或 Lunar 对象
+  let solar: Solar;
+  let lunar: Lunar;
+  
+  if (isLunar) {
+    // 农历输入
+    lunar = Lunar.fromYmd(year, month, day);
+    solar = lunar.getSolar();
+  } else {
+    // 公历输入
+    solar = Solar.fromYmd(year, month, day);
+    lunar = Lunar.fromSolar(solar);
+  }
 
   // 年柱
   const yearGanZhi = lunar.getYearInGanZhi();
@@ -83,12 +94,11 @@ export function calculateBazi(
   };
 
   // 时柱（如果提供了时辰）
-  if (hourStr) {
-    const hourIndex = parseHourToIndex(hourStr);
-    if (hourIndex >= 0) {
-      const hourGanZhi = lunar.getTimeInGanZhi(hourIndex);
-      result.hour = pillarFromGanZhi(hourGanZhi[0], hourGanZhi[1]);
-    }
+  if (hour !== null && hour !== undefined) {
+    // 数字小时（0-23）→ 时辰索引（0=子时 23-1, 1=丑时 1-3 ... 11=亥时 21-23）
+    const hourIndex = hour === 23 || hour === 0 ? 0 : Math.floor((hour + 1) / 2);
+    const hourGanZhi = lunar.getTimeInGanZhi(hourIndex);
+    result.hour = pillarFromGanZhi(hourGanZhi[0], hourGanZhi[1]);
   }
 
   return result;

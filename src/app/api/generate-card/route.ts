@@ -1,107 +1,117 @@
-import { NextRequest, NextResponse } from "next/server";
-import { calculateBazi, baziToPrompt, BaziResult } from "@/lib/bazi";
+import { NextRequest, NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+import { calculateBazi, baziToPrompt, getDayMasterWuxing } from '@/lib/bazi'
 
-// 硅基流动 API 配置（从环境变量读取）
-const SILICONFLOW_API = "https://api.siliconflow.cn/v1/chat/completions";
-const MODEL = "Qwen/Qwen2.5-72B-Instruct";
-
-function getApiKey(): string {
-  return process.env.SILICONFLOW_API_KEY || "";
-}
-
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
-    const { year, month, day, hour, gender } = body;
+    const body = await request.json()
+    const { birth_year, birth_month, birth_day, birth_hour, birth_minute, gender, is_lunar } = body
 
-    if (!year || !month || !day) {
-      return NextResponse.json({ error: "缺少出生信息" }, { status: 400 });
+    // 计算八字
+    const hour = birth_hour ? parseInt(birth_hour) : null
+    const minute = birth_minute ? parseInt(birth_minute) : null
+    const bazi = calculateBazi(
+      parseInt(birth_year),
+      parseInt(birth_month),
+      parseInt(birth_day),
+      hour,
+      minute,
+      is_lunar || false
+    )
+
+    // 获取当前用户
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // 从数据库读取用户档案
+    let profile = null
+    if (user) {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      profile = data
     }
 
-    // 1. 计算八字
-    // 时辰格式处理："子时 (23:00-01:00)" → "子时"
-    const hourStr = hour
-      ? hour.replace(/\s*\(.*\)/, "").replace("时", "").trim()
-      : undefined;
-    console.log("时辰输入:", hour, "→ 解析后:", hourStr);
-    const bazi: BaziResult = calculateBazi(
-      parseInt(year),
-      parseInt(month),
-      parseInt(day),
-      hourStr
-    );
-    console.log("八字结果:", JSON.stringify(bazi, null, 2));
-
-    // 2. 构造 AI prompt
-    const prompt = baziToPrompt(bazi, gender || "male");
-
-    // 3. 调用硅基流动 API
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      // 开发模式：返回 mock 数据
-      console.warn("未配置 SILICONFLOW_API_KEY，返回 mock 数据");
-      return NextResponse.json({
-        bazi,
-        card: generateMockCard(bazi, gender || "male"),
-      });
+    // 生成人格卡片数据
+    const wuxing = getDayMasterWuxing(bazi)
+    const card = {
+      wuxing_personality: `${bazi.dayGan}${wuxing}`,
+      keywords: generateKeywords(wuxing),
+      emotion_pattern: getEmotionPattern(wuxing),
+      relation_pattern: getRelationPattern(wuxing),
+      social_tendency: getSocialTendency(wuxing),
+      summary: `${bazi.dayGan}${wuxing}之人，性格${generateKeywords(wuxing).slice(0, 2).join('、')}，适合与${getMatchType(wuxing)}型人格相处。`,
+      bazi_display: `${bazi.year.gan}${bazi.year.zhi} ${bazi.month.gan}${bazi.month.zhi} ${bazi.day.gan}${bazi.day.zhi} ${bazi.hour?.gan || '?'}${bazi.hour?.zhi || '?'}`
     }
-
-    const aiRes = await fetch(SILICONFLOW_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.8,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!aiRes.ok) {
-      const errText = await aiRes.text();
-      console.error("AI API 错误:", errText);
-      return NextResponse.json(
-        { error: "AI 生成失败", detail: errText },
-        { status: 500 }
-      );
-    }
-
-    const aiData = await aiRes.json();
-    const cardJson = JSON.parse(aiData.choices[0].message.content);
 
     return NextResponse.json({
-      bazi,
-      card: cardJson,
-    });
-  } catch (err: any) {
-    console.error("生成人格卡失败:", err);
-    return NextResponse.json(
-      { error: err.message || "服务器错误" },
-      { status: 500 }
-    );
+      card,
+      bazi: {
+        year: { gan: bazi.year.gan, zhi: bazi.year.zhi, wuxing_gan: bazi.year.wuxing_gan },
+        month: { gan: bazi.month.gan, zhi: bazi.month.zhi, wuxing_gan: bazi.month.wuxing_gan },
+        day: { gan: bazi.day.gan, zhi: bazi.day.zhi, wuxing_gan: bazi.day.wuxing_gan },
+        hour: bazi.hour ? { gan: bazi.hour.gan, zhi: bazi.hour.zhi, wuxing_gan: bazi.hour.wuxing_gan } : undefined
+      }
+    })
+  } catch (error) {
+    console.error('生成卡片失败:', error)
+    return NextResponse.json({ error: '生成失败' }, { status: 500 })
   }
 }
 
-// Mock 数据（开发模式）
-function generateMockCard(bazi: BaziResult, gender: string) {
-  const wuxing = bazi.day.wuxing_gan;
-  const labelMap: Record<string, string> = {
-    "木": "甲木",
-    "火": "丙火",
-    "土": "戊土",
-    "金": "庚金",
-    "水": "壬水",
-  };
-  return {
-    wuxing_personality: labelMap[wuxing] || "甲木",
-    keywords: ["外柔内刚", "重精神连接", "直觉敏锐", "追求深度"],
-    emotion_pattern: "情绪深沉，不轻易外露，但内心波澜壮阔。",
-    relation_pattern: "在关系中追求灵魂共鸣，而非表面陪伴。",
-    social_tendency: "社交节制，偏爱小圈子深度交流，对陌生人保持距离。",
-    summary: `${labelMap[wuxing] || "甲木"}之人，外柔内刚，重精神连接，容易被秩序型人格吸引。`,
-    bazi_display: `${bazi.year.gan}${bazi.year.zhi} ${bazi.month.gan}${bazi.month.zhi} ${bazi.day.gan}${bazi.day.zhi} ${bazi.hour ? bazi.hour.gan + bazi.hour.zhi : "??"}`,
-  };
+// 根据五行生成关键词
+function generateKeywords(wuxing: string): string[] {
+  const keywordMap: Record<string, string[]> = {
+    '木': ['正直', '仁慈', '坚韧', '向上', '温和'],
+    '火': ['热情', '开朗', '活跃', '乐观', '冲动'],
+    '土': ['稳重', '诚实', '包容', '踏实', '保守'],
+    '金': ['刚毅', '果断', '义气', '锐利', '冷静'],
+    '水': ['智慧', '灵活', '深沉', '敏感', '善变']
+  }
+  return keywordMap[wuxing] || ['独特', '神秘']
+}
+
+function getEmotionPattern(wuxing: string): string {
+  const map: Record<string, string> = {
+    '木': '情绪内敛，不善表达，但内心坚定',
+    '火': '情绪外放，喜怒形于色，来得快去得快',
+    '土': '情绪稳定，不易波动，重视安全感',
+    '金': '情绪克制，理性占优，偶有固执',
+    '水': '情绪丰富，敏感细腻，易受环境影响'
+  }
+  return map[wuxing] || '情绪独特，难以捉摸'
+}
+
+function getRelationPattern(wuxing: string): string {
+  const map: Record<string, string> = {
+    '木': '关系中追求精神共鸣，重视共同成长',
+    '火': '关系中热情主动，喜欢表达与互动',
+    '土': '关系中忠诚稳定，注重承诺与责任',
+    '金': '关系中直率坦诚，重视原则与底线',
+    '水': '关系中细腻体贴，善于察言观色'
+  }
+  return map[wuxing] || '关系模式独特'
+}
+
+function getSocialTendency(wuxing: string): string {
+  const map: Record<string, string> = {
+    '木': '社交中偏内向，喜欢深度交流胜过热闹',
+    '火': '社交活跃，善于破冰，容易成为焦点',
+    '土': '社交稳重，圈子稳定，不喜频繁变动',
+    '金': '社交有选择性，重质不重量',
+    '水': '社交灵活，能适应不同场合'
+  }
+  return map[wuxing] || '社交方式独特'
+}
+
+function getMatchType(wuxing: string): string {
+  const map: Record<string, string> = {
+    '木': '水（智慧）或火（热情）',
+    '火': '木（稳重）或土（包容）',
+    '土': '火（活力）或金（果断）',
+    '金': '土（稳定）或水（灵活）',
+    '水': '金（坚定）或木（正直）'
+  }
+  return map[wuxing] || '相似五行'
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { InkMark } from "@/components/InkMark";
 
 interface CardData {
@@ -28,28 +29,64 @@ export default function CardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const raw = sessionStorage.getItem("xinzhai_birth");
-    if (!raw) {
-      router.push("/input");
-      return;
-    }
-    const form = JSON.parse(raw);
-
-    fetch("/api/generate-card", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    const loadData = async () => {
+      // 先尝试从 sessionStorage 读取
+      const raw = sessionStorage.getItem("xinzhai_birth");
+      
+      if (raw) {
+        const form = JSON.parse(raw);
+        const res = await fetch("/api/generate-card", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        const data = await res.json();
         setCard(data.card);
         setBazi(data.bazi);
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
+        return;
+      }
+      
+      // 如果 sessionStorage 为空，尝试从 Supabase 读取用户档案
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          const res = await fetch("/api/generate-card", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              birth_year: profile.birth_year,
+              birth_month: profile.birth_month,
+              birth_day: profile.birth_day,
+              birth_hour: profile.birth_hour,
+              birth_minute: profile.birth_minute,
+              gender: profile.gender,
+              is_lunar: profile.is_lunar
+            }),
+          });
+          const data = await res.json();
+          setCard(data.card);
+          setBazi(data.bazi);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // 都没有，跳转到注册
+      router.push("/register");
+    };
+    
+    loadData().catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   }, [router]);
 
   if (loading) {

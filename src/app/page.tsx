@@ -35,12 +35,20 @@ export default function WelcomePage() {
           是命理里早已写好的共鸣
         </p>
 
-        <button
-          onClick={() => router.push("/input")}
-          className="mt-4 px-10 py-3 border border-ink-300 text-ink-700 text-sm tracking-widest hover:bg-ink-50 transition-colors duration-500 font-light"
-        >
-          进入心斋
-        </button>
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={() => router.push("/input")}
+            className="px-10 py-3 border border-ink-300 text-ink-700 text-sm tracking-widest hover:bg-ink-50 transition-colors duration-500 font-light"
+          >
+            体验版
+          </button>
+          <button
+            onClick={() => router.push("/register")}
+            className="px-10 py-3 bg-ink-800 text-white text-sm tracking-widest hover:bg-ink-700 transition-colors duration-500 font-light"
+          >
+            注册
+          </button>
+        </div>
 
         <p className="text-[10px] text-ink-300 mt-8 font-light">
           基于八字命理的人格匹配系统
