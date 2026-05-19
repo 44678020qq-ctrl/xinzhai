@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  xinzhai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xinzhai-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      # 可选：配置 AI API Key
+      # - SILICONFLOW_API_KEY=${SILICONFLOW_API_KEY}
+    restart: unless-stopped
+    networks:
+      - xinzhai-net
+
+networks:
+  xinzhai-net:
+    driver: bridge

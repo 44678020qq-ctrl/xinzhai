@@ -1,0 +1,12 @@
+# .dockerignore - 排除不需要打包的文件
+
+node_modules
+.next
+.git
+*.md
+*.log
+.DS_Store
+*.zip
+*.tar.gz
+.vercel
+pnpm-lock.yaml
