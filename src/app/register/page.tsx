@@ -99,7 +99,37 @@ export default function RegisterPage() {
       router.push('/card')
     } catch (error) {
       console.error('注册失败:', error)
-      alert('注册失败，请稍后重试')
+      const errMsg = error instanceof Error ? error.message : JSON.stringify(error)
+      // 即使 Supabase 失败，也保存到 sessionStorage 并跳转（降级模式）
+      sessionStorage.setItem('xinzhai_birth', JSON.stringify({
+        birth_year: formData.birth_year,
+        birth_month: formData.birth_month,
+        birth_day: formData.birth_day,
+        birth_hour: formData.birth_hour,
+        birth_minute: formData.birth_minute,
+        gender: formData.gender,
+        is_lunar: formData.is_lunar
+      }))
+      
+      const bazi = calculateBazi(
+        parseInt(formData.birth_year),
+        parseInt(formData.birth_month),
+        parseInt(formData.birth_day),
+        formData.birth_hour ? parseInt(formData.birth_hour) : null,
+        formData.birth_minute ? parseInt(formData.birth_minute) : null,
+        formData.is_lunar
+      )
+      const strength = judgeStrength(bazi)
+      const yongShen = findYongShen(bazi)
+      sessionStorage.setItem('xinzhai_bazi', JSON.stringify({
+        dayMaster: bazi.day.wuxing_gan,
+        dayMasterGan: bazi.dayGan,
+        strength,
+        yongShen
+      }))
+      
+      console.warn('Supabase 注册失败，使用本地模式继续:', errMsg)
+      router.push('/card')
     } finally {
       setLoading(false)
     }
