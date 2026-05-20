@@ -31,6 +31,7 @@ from .bazi import BaziCalculator
 from .wuxing import WuxingAnalyzer
 from .shensha import ShenShaAnalyzer
 from .yongshen import YongShenAnalyzer
+from .solar_time import SolarTimeEngine
 
 __version__ = "0.1.0"
 __all__ = [
@@ -44,7 +45,8 @@ __all__ = [
     "BaziCalculator",
     "WuxingAnalyzer",
     "ShenShaAnalyzer",
-    "YongShenAnalyzer"
+    "YongShenAnalyzer",
+    "SolarTimeEngine"
 ]
 
 class BaziAnalyzer:
@@ -59,6 +61,11 @@ class BaziAnalyzer:
         self.wuxing_analyzer = WuxingAnalyzer()
         self.shensha_analyzer = ShenShaAnalyzer()
         self.yongshen_analyzer = YongShenAnalyzer()
+        self.solar_time_engine = SolarTimeEngine()
+        self.solar_time_engine = SolarTimeEngine()
+        self.solar_time_engine = SolarTimeEngine()
+        self.solar_time_engine = SolarTimeEngine()
+        self.solar_time_engine = SolarTimeEngine()
     
     def analyze(self, bazi_data: dict) -> BaziAnalysisResult:
         """
