@@ -37,10 +37,10 @@ export default function WelcomePage() {
 
         <div className="flex gap-3 mt-4">
           <button
-            onClick={() => router.push("/input")}
+            onClick={() => router.push("/register")}
             className="px-10 py-3 border border-ink-300 text-ink-700 text-sm tracking-widest hover:bg-ink-50 transition-colors duration-500 font-light"
           >
-            体验版
+            开始
           </button>
           <button
             onClick={() => router.push("/register")}
