@@ -125,7 +125,7 @@ export default function MatchPage() {
 
   useEffect(() => {
     const raw = sessionStorage.getItem("xinzhai_birth");
-    if (!raw) { router.push("/input"); return; }
+    if (!raw) { router.push("/register"); return; }
 
     import("@/lib/bazi").then(async (mod) => {
       const form = JSON.parse(raw);
@@ -204,8 +204,8 @@ export default function MatchPage() {
 
   const handleSendResonance = (match: MatchResult) => {
     setSent((prev) => [...prev, match.id]);
-    sessionStorage.setItem("xinzhai_match", JSON.stringify(match));
-    router.push("/resonance");
+    sessionStorage.setItem("xinzhai_chat_target", JSON.stringify(match));
+    router.push("/chat");
   };
 
   if (loading || !myWx) {

@@ -134,7 +134,7 @@ export default function ChatPage() {
   };
 
   return (
-    <main className="flex flex-col h-screen max-w-sm mx-auto">
+    <main className="flex flex-col h-screen max-w-sm mx-auto pt-safe">
       {/* 顶部 - 命局信息栏 */}
       <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-ink-50 to-white border-b border-ink-100">
         <button

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { calculateBazi, judgeStrength, findYongShen } from '@/lib/bazi'
+import { InkMark } from '@/components/InkMark'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -23,12 +24,22 @@ export default function RegisterPage() {
     e.preventDefault()
     setLoading(true)
 
-    try {
-      // 计算八字
-      const hour = formData.birth_hour ? parseInt(formData.birth_hour) : null
-      const minute = formData.birth_minute ? parseInt(formData.birth_minute) : null
+    const birthData = {
+      birth_year: formData.birth_year,
+      birth_month: formData.birth_month,
+      birth_day: formData.birth_day,
+      birth_hour: formData.birth_hour,
+      birth_minute: formData.birth_minute,
+      gender: formData.gender,
+      is_lunar: formData.is_lunar
+    }
 
-      const bazi = calculateBazi(
+    const hour = formData.birth_hour ? parseInt(formData.birth_hour) : null
+    const minute = formData.birth_minute ? parseInt(formData.birth_minute) : null
+
+    let bazi
+    try {
+      bazi = calculateBazi(
         parseInt(formData.birth_year),
         parseInt(formData.birth_month),
         parseInt(formData.birth_day),
@@ -36,201 +47,142 @@ export default function RegisterPage() {
         minute,
         formData.is_lunar
       )
+    } catch {
+      alert('日期无效，请检查')
+      setLoading(false)
+      return
+    }
 
-      // 保存到 Supabase（使用匿名登录）
+    try {
       let { data: { user } } = await supabase.auth.getUser()
-
       if (!user) {
-        // 如果没登录，先匿名登录
         const { data, error } = await supabase.auth.signInAnonymously()
         if (error) throw error
         user = data.user
       }
 
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: user?.id,
-          name: formData.name || null,
-          gender: formData.gender || null,
-          birth_year: parseInt(formData.birth_year),
-          birth_month: parseInt(formData.birth_month),
-          birth_day: parseInt(formData.birth_day),
-          birth_hour: hour,
-          birth_minute: minute,
-          is_lunar: formData.is_lunar,
-          bazi_year_gan: bazi.year.gan,
-          bazi_year_zhi: bazi.year.zhi,
-          bazi_month_gan: bazi.month.gan,
-          bazi_month_zhi: bazi.month.zhi,
-          bazi_day_gan: bazi.day.gan,
-          bazi_day_zhi: bazi.day.zhi,
-          bazi_hour_gan: bazi.hour?.gan || null,
-          bazi_hour_zhi: bazi.hour?.zhi || null,
-          day_master_wuxing: bazi.day.wuxing_gan,
-          personality_tags: [],
-          updated_at: new Date().toISOString()
-        })
-
-      if (profileError) throw profileError
-
-      // 保存到 sessionStorage 供 /card 和 /chat 页面使用
-      sessionStorage.setItem('xinzhai_birth', JSON.stringify({
-        birth_year: formData.birth_year,
-        birth_month: formData.birth_month,
-        birth_day: formData.birth_day,
-        birth_hour: formData.birth_hour,
-        birth_minute: formData.birth_minute,
-        gender: formData.gender,
-        is_lunar: formData.is_lunar
-      }))
-      
-      // 保存八字信息供 chat 使用
-      const strength = judgeStrength(bazi)
-      const yongShen = findYongShen(bazi)
-      sessionStorage.setItem('xinzhai_bazi', JSON.stringify({
-        dayMaster: bazi.day.wuxing_gan,
-        dayMasterGan: bazi.dayGan,
-        strength,
-        yongShen
-      }))
-
-      // 跳转到卡片页
-      router.push('/card')
+      await supabase.from('user_profiles').insert({
+        id: user?.id,
+        name: formData.name || null,
+        gender: formData.gender || null,
+        birth_year: parseInt(formData.birth_year),
+        birth_month: parseInt(formData.birth_month),
+        birth_day: parseInt(formData.birth_day),
+        birth_hour: hour,
+        birth_minute: minute,
+        is_lunar: formData.is_lunar,
+        bazi_year_gan: bazi.year.gan,
+        bazi_year_zhi: bazi.year.zhi,
+        bazi_month_gan: bazi.month.gan,
+        bazi_month_zhi: bazi.month.zhi,
+        bazi_day_gan: bazi.day.gan,
+        bazi_day_zhi: bazi.day.zhi,
+        bazi_hour_gan: bazi.hour?.gan || null,
+        bazi_hour_zhi: bazi.hour?.zhi || null,
+        day_master_wuxing: bazi.day.wuxing_gan,
+        personality_tags: [],
+        updated_at: new Date().toISOString()
+      })
     } catch (error) {
-      console.error('注册失败:', error)
-      const errMsg = error instanceof Error ? error.message : JSON.stringify(error)
-      // 即使 Supabase 失败，也保存到 sessionStorage 并跳转（降级模式）
-      sessionStorage.setItem('xinzhai_birth', JSON.stringify({
-        birth_year: formData.birth_year,
-        birth_month: formData.birth_month,
-        birth_day: formData.birth_day,
-        birth_hour: formData.birth_hour,
-        birth_minute: formData.birth_minute,
-        gender: formData.gender,
-        is_lunar: formData.is_lunar
-      }))
-      
-      const bazi = calculateBazi(
-        parseInt(formData.birth_year),
-        parseInt(formData.birth_month),
-        parseInt(formData.birth_day),
-        formData.birth_hour ? parseInt(formData.birth_hour) : null,
-        formData.birth_minute ? parseInt(formData.birth_minute) : null,
-        formData.is_lunar
-      )
-      const strength = judgeStrength(bazi)
-      const yongShen = findYongShen(bazi)
-      sessionStorage.setItem('xinzhai_bazi', JSON.stringify({
-        dayMaster: bazi.day.wuxing_gan,
-        dayMasterGan: bazi.dayGan,
-        strength,
-        yongShen
-      }))
-      
-      console.warn('Supabase 注册失败，使用本地模式继续:', errMsg)
-      router.push('/card')
-    } finally {
-      setLoading(false)
+      console.warn('Supabase 失败，降级本地模式:', error)
     }
+
+    sessionStorage.setItem('xinzhai_birth', JSON.stringify(birthData))
+    const strength = judgeStrength(bazi)
+    const yongShen = findYongShen(bazi)
+    sessionStorage.setItem('xinzhai_bazi', JSON.stringify({
+      dayMaster: bazi.day.wuxing_gan,
+      dayMasterGan: bazi.dayGan,
+      strength,
+      yongShen
+    }))
+
+    router.push('/card')
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-light text-stone-800">完善档案</h1>
-          <p className="text-stone-500 mt-2">填写生辰，开启命理社交之旅</p>
+    <main className="min-h-screen flex flex-col items-center px-6 py-16">
+      <div className="animate-fade-in-up w-full max-w-sm flex flex-col gap-8">
+        {/* 标题 */}
+        <div className="text-center flex flex-col items-center gap-3">
+          <InkMark />
+          <h1 className="text-xl tracking-[0.2em] text-ink-800 font-light">
+            入斋
+          </h1>
+          <p className="text-[11px] text-ink-400 font-light leading-relaxed">
+            填写生辰，照见你的人格底色
+          </p>
+          <div className="w-8 h-[0.5px] bg-ink-300" />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-2xl shadow-sm">
-          {/* 姓名 */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {/* 昵称 */}
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
+            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
               昵称（选填）
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-400 focus:border-transparent"
-              placeholder="如何称呼你？"
+              className="w-full px-4 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
+              placeholder="如何称呼你"
             />
           </div>
 
           {/* 性别 */}
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
+            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
               性别
             </label>
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, gender: 'male' })}
-                className={`flex-1 py-2 rounded-lg border ${
-                  formData.gender === 'male'
-                    ? 'bg-stone-800 text-white border-stone-800'
-                    : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
-                }`}
-              >
-                男
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, gender: 'female' })}
-                className={`flex-1 py-2 rounded-lg border ${
-                  formData.gender === 'female'
-                    ? 'bg-stone-800 text-white border-stone-800'
-                    : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
-                }`}
-              >
-                女
-              </button>
+            <div className="flex gap-3">
+              {(['male', 'female'] as const).map(g => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, gender: g })}
+                  className={`flex-1 py-2.5 border text-xs tracking-wider font-light transition-colors duration-300 rounded-sm ${
+                    formData.gender === g
+                      ? 'border-ink-700 bg-ink-800 text-paper'
+                      : 'border-ink-200 text-ink-500 hover:border-ink-400'
+                  }`}
+                >
+                  {g === 'male' ? '男' : '女'}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* 出生日期 */}
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
-              出生日期
+            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
+              出生日期（公历）
             </label>
             <div className="grid grid-cols-3 gap-2">
-              <input
-                type="number"
-                value={formData.birth_year}
-                onChange={(e) => setFormData({ ...formData, birth_year: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-400"
-                placeholder="年"
-                min="1900"
-                max="2100"
-                required
-              />
-              <input
-                type="number"
-                value={formData.birth_month}
-                onChange={(e) => setFormData({ ...formData, birth_month: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-400"
-                placeholder="月"
-                min="1"
-                max="12"
-                required
-              />
-              <input
-                type="number"
-                value={formData.birth_day}
-                onChange={(e) => setFormData({ ...formData, birth_day: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-400"
-                placeholder="日"
-                min="1"
-                max="31"
-                required
-              />
+              {[
+                { key: 'birth_year', ph: '年', min: 1940, max: 2010 },
+                { key: 'birth_month', ph: '月', min: 1, max: 12 },
+                { key: 'birth_day', ph: '日', min: 1, max: 31 },
+              ].map(f => (
+                <input
+                  key={f.key}
+                  type="number"
+                  value={formData[f.key as keyof typeof formData] as string}
+                  onChange={(e) => setFormData({ ...formData, [f.key]: e.target.value })}
+                  className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
+                  placeholder={f.ph}
+                  min={f.min}
+                  max={f.max}
+                  required
+                />
+              ))}
             </div>
           </div>
 
           {/* 出生时间 */}
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
+            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
               出生时间（选填，影响时柱）
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -238,51 +190,53 @@ export default function RegisterPage() {
                 type="number"
                 value={formData.birth_hour}
                 onChange={(e) => setFormData({ ...formData, birth_hour: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-400"
+                className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
                 placeholder="时（0-23）"
-                min="0"
-                max="23"
+                min={0}
+                max={23}
               />
               <input
                 type="number"
                 value={formData.birth_minute}
                 onChange={(e) => setFormData({ ...formData, birth_minute: e.target.value })}
-                className="px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-400"
+                className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
                 placeholder="分"
-                min="0"
-                max="59"
+                min={0}
+                max={59}
               />
             </div>
           </div>
 
-          {/* 农历/公历 */}
-          <div className="flex items-center gap-2">
+          {/* 农历开关 */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div className={`w-4 h-4 border rounded-sm flex items-center justify-center transition-colors ${
+              formData.is_lunar ? 'bg-ink-800 border-ink-800' : 'border-ink-300'
+            }`}>
+              {formData.is_lunar && <span className="text-paper text-[8px]">✓</span>}
+            </div>
             <input
               type="checkbox"
-              id="is_lunar"
               checked={formData.is_lunar}
               onChange={(e) => setFormData({ ...formData, is_lunar: e.target.checked })}
-              className="w-4 h-4 text-stone-800 border-stone-300 rounded focus:ring-stone-500"
+              className="sr-only"
             />
-            <label htmlFor="is_lunar" className="text-sm text-stone-600">
-              这是农历日期
-            </label>
-          </div>
+            <span className="text-[11px] text-ink-500 font-light">这是农历日期</span>
+          </label>
 
-          {/* 提交按钮 */}
+          {/* 提交 */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-stone-800 text-white rounded-lg font-medium hover:bg-stone-700 disabled:bg-stone-400 disabled:cursor-not-allowed transition"
+            disabled={loading || !formData.birth_year || !formData.birth_month || !formData.birth_day}
+            className="w-full py-3 border border-ink-700 bg-ink-800 text-paper text-sm tracking-[0.15em] font-light hover:bg-ink-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-500 rounded-sm"
           >
-            {loading ? '保存中...' : '生成我的命盘'}
+            {loading ? '正在起盘…' : '生成命签'}
           </button>
         </form>
 
-        <p className="text-center text-stone-400 text-xs mt-4">
-          提交即表示同意我们的隐私政策
+        <p className="text-center text-[10px] text-ink-300 font-light">
+          心斋 · 八字人格系统
         </p>
       </div>
-    </div>
+    </main>
   )
 }
