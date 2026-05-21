@@ -68,8 +68,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 获取用户命局信息
-    const { data: { user } } = await supabase.auth.getUser()
+    // 获取用户信息（非阻塞）
+    let user = null
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      user = userData.user
+    } catch (e) {
+      console.warn('Supabase auth 获取失败，继续匿名对话:', e)
+    }
     
     // 检索匹配的钉子（风格锚 + few-shot）
     let matchedJiaoZi = SEED_JIAOZI.slice(0, 3)
@@ -104,24 +110,33 @@ export async function POST(request: NextRequest) {
       reply.reasoning?.unshift({ step: "降级", content: "LLM调用失败，已降级到规则模板" })
     }
     
-    // 保存对话记录
+    // 保存对话记录（非阻塞）
     if (user) {
-      await supabase.from('chat_messages').insert({
-        user_id: user.id,
-        role: 'user',
-        content: message
-      })
-      await supabase.from('chat_messages').insert({
-        user_id: user.id,
-        role: 'assistant',
-        content: reply.reply
-      })
+      try {
+        await supabase.from('chat_messages').insert({
+          user_id: user.id,
+          role: 'user',
+          content: message
+        })
+        await supabase.from('chat_messages').insert({
+          user_id: user.id,
+          role: 'assistant',
+          content: reply.reply
+        })
+      } catch (e) {
+        console.warn('保存对话记录失败:', e)
+      }
     }
     
     return NextResponse.json(reply)
   } catch (error) {
     console.error('AI 对话失败:', error)
-    return NextResponse.json({ error: '对话失败' }, { status: 500 })
+    // 即使出错也返回一个友好回复
+    return NextResponse.json({ 
+      reply: "我在想，但需要一点时间。能再说一次吗？",
+      reasoning: [{ step: "异常", content: String(error) }],
+      verdict: "系统繁忙"
+    })
   }
 }
 

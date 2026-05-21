@@ -49,8 +49,8 @@ export default function FlowPage() {
   const [hoveredEvent, setHoveredEvent] = useState<LifeEvent | null>(null);
 
   useEffect(() => {
-    // 从 sessionStorage 获取用户数据
-    const stored = sessionStorage.getItem("userData");
+    // 从 sessionStorage 获取用户数据（兼容多个key）
+    const stored = sessionStorage.getItem("xinzhai_birth") || sessionStorage.getItem("userData");
     if (!stored) {
       router.push("/register");
       return;
@@ -59,8 +59,16 @@ export default function FlowPage() {
     try {
       const userData = JSON.parse(stored);
       // 使用出生年份和日主生成数据
-      const birthYear = userData.birthYear || 2003;
-      const dayMaster = userData.bazi?.day?.gan || "丙";
+      const birthYear = userData.birth_year || userData.birthYear || 2003;
+      // 尝试从bazi获取日主
+      let dayMaster = "丙";
+      const baziRaw = sessionStorage.getItem("xinzhai_bazi");
+      if (baziRaw) {
+        try {
+          const baziInfo = JSON.parse(baziRaw);
+          dayMaster = baziInfo.dayMasterGan || baziInfo.dayMaster || "丙";
+        } catch (e) { /* ignore */ }
+      }
       const data = generateMockFlowData(birthYear, dayMaster);
       setFlowData(data);
     } catch (e) {
