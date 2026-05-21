@@ -56,6 +56,74 @@ const CITY_COORDS: Record<string, { longitude: number; latitude: number }> = {
 
 const CITY_LIST = Object.keys(CITY_COORDS)
 
+/**
+ * 真太阳时修正：根据出生城市经纬度调整时辰
+ * 1. 均时差修正（Bretagnon公式，±16分钟）
+ * 2. 经度修正（与东120°的差 × 4分钟/度）
+ * 修正后可能跨越时辰边界 → 调整出生时辰
+ */
+function adjustToSolarTime(
+  birthYear: number, birthMonth: number, birthDay: number,
+  birthHour: number, birthMinute: number,
+  longitude?: number,
+): { adjustedHour: number; adjustedMinute: number; shichenChanged: boolean; originalShichen: string; adjustedShichen: string } {
+  // 均时差
+  const dayOfYear = getDayOfYear(birthYear, birthMonth, birthDay);
+  const theta = (2 * Math.PI * dayOfYear) / 365;
+  const eot = 9.87 * Math.sin(2 * theta) - 7.53 * Math.cos(theta) - 1.5 * Math.sin(theta);
+  
+  // 经度修正
+  let longitudeCorrection = 0;
+  if (longitude) {
+    longitudeCorrection = (longitude - 120) * 4; // 分钟
+  }
+  
+  // 综合修正
+  const totalCorrection = eot + longitudeCorrection; // 分钟
+  let adjustedMinute = birthMinute + totalCorrection;
+  let adjustedHour = birthHour;
+  
+  if (adjustedMinute >= 60) {
+    adjustedHour += Math.floor(adjustedMinute / 60);
+    adjustedMinute = adjustedMinute % 60;
+  } else if (adjustedMinute < 0) {
+    adjustedHour += Math.floor(adjustedMinute / 60) - 1;
+    adjustedMinute = (adjustedMinute % 60 + 60) % 60;
+  }
+  
+  const originalShichen = getShichenName(birthHour);
+  const adjustedShichen = getShichenName(adjustedHour);
+  
+  return {
+    adjustedHour, adjustedMinute: Math.round(adjustedMinute),
+    shichenChanged: originalShichen !== adjustedShichen,
+    originalShichen, adjustedShichen,
+  };
+}
+
+function getDayOfYear(year: number, month: number, day: number): number {
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  let dayOfYear = day;
+  for (let i = 0; i < month - 1; i++) { dayOfYear += daysInMonth[i]; }
+  return dayOfYear;
+}
+
+function getShichenName(hour: number): string {
+  if (hour === 23 || hour === 0) return '子时';
+  if (hour >= 1 && hour < 3) return '丑时';
+  if (hour >= 3 && hour < 5) return '寅时';
+  if (hour >= 5 && hour < 7) return '卯时';
+  if (hour >= 7 && hour < 9) return '辰时';
+  if (hour >= 9 && hour < 11) return '巳时';
+  if (hour >= 11 && hour < 13) return '午时';
+  if (hour >= 13 && hour < 15) return '未时';
+  if (hour >= 15 && hour < 17) return '申时';
+  if (hour >= 17 && hour < 19) return '酉时';
+  if (hour >= 19 && hour < 21) return '戌时';
+  return '亥时';
+}
+
 const SHICHEN = [
   { label: '子时', range: '23:00-01:00', hour: 0 },
   { label: '丑时', range: '01:00-03:00', hour: 1 },
@@ -112,14 +180,25 @@ export default function RegisterPage() {
     const hour = formData.birth_hour ? parseInt(formData.birth_hour) : null
     const minute = formData.birth_minute ? parseInt(formData.birth_minute) : null
 
+    // 真太阳时修正：根据出生城市调整时辰
+    const longitude = formData.birth_city ? CITY_COORDS[formData.birth_city]?.longitude : undefined
+    const solarAdjusted = hour ? adjustToSolarTime(
+      parseInt(formData.birth_year), parseInt(formData.birth_month), parseInt(formData.birth_day),
+      hour, minute || 0, longitude
+    ) : null
+    
+    // 如果真太阳时修正跨越时辰边界，使用修正后的时辰
+    const effectiveHour = solarAdjusted?.shichenChanged ? solarAdjusted.adjustedHour : hour
+    const effectiveMinute = solarAdjusted?.shichenChanged ? solarAdjusted.adjustedMinute : minute
+    
     let bazi
     try {
       bazi = calculateBazi(
         parseInt(formData.birth_year),
         parseInt(formData.birth_month),
         parseInt(formData.birth_day),
-        hour,
-        minute,
+        effectiveHour,
+        effectiveMinute,
         formData.is_lunar
       )
     } catch {

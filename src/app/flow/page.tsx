@@ -15,12 +15,15 @@ const ReferenceLine = dynamic(() => import("recharts").then((mod) => mod.Referen
 
 import { generateFlowData, type FlowData, type LifeEvent } from "@/lib/flow-data";
 import { calculateBazi } from "@/lib/bazi";
+import { checkTurnTide, markTurnTideTriggered, getTriggeredTurnKeys, type TurnTideResult } from "@/lib/turn-tide";
 import Navigation from "@/components/Navigation";
 
 export default function FlowPage() {
   const router = useRouter();
   const [flowData, setFlowData] = useState<FlowData | null>(null);
   const [selectedAge, setSelectedAge] = useState<number | null>(null);
+  const [turnTide, setTurnTide] = useState<TurnTideResult | null>(null);
+  const [showTurnTide, setShowTurnTide] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("xinzhai_birth") || sessionStorage.getItem("userData");
@@ -48,6 +51,17 @@ export default function FlowPage() {
 
       const data = generateFlowData(bazi, gender, birthYear);
       setFlowData(data);
+
+      // 转潮判断（工单-07）
+      const currentAge = new Date().getFullYear() - birthYear;
+      const currentMonth = new Date().getMonth() + 1;
+      const birthMonthParsed = parseInt(userData.birth_month) || 1;
+      const triggeredKeys = typeof window !== 'undefined' ? getTriggeredTurnKeys() : [];
+      const tt = checkTurnTide(currentAge, currentMonth, birthMonthParsed, data.daYunList, data.isStrong, triggeredKeys);
+      setTurnTide(tt);
+      if (tt.isTurning && !tt.hasTriggered) {
+        setShowTurnTide(true);
+      }
     } catch (e) {
       console.error("Failed to parse userData:", e);
       router.push("/register");
@@ -79,8 +93,58 @@ export default function FlowPage() {
   // 当前年龄标记
   const currentAge = new Date().getFullYear() - parseInt(flowData.bazi[2] ? "0" : "0"); // 简化
 
+  // 转潮仪式弹窗
+  const handleTurnTideDismiss = () => {
+    if (turnTide?.daYun) {
+      const turnKey = `turn_${turnTide.daYun.gan}${turnTide.daYun.zhi}_${turnTide.daYun.startAge}`;
+      markTurnTideTriggered(turnKey);
+    }
+    setShowTurnTide(false);
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 pb-24">
+      {/* 转潮仪式弹窗 */}
+      {showTurnTide && turnTide?.isTurning && (
+        <div className="fixed inset-0 z-50 bg-stone-900/95 flex items-center justify-center">
+          <div className="text-center max-w-xs animate-fade-in-up">
+            {/* 墨色静 */}
+            <div className="mb-8">
+              <div className="w-12 h-12 mx-auto rounded-full bg-stone-800 border border-stone-600 flex items-center justify-center">
+                <span className="text-stone-300 text-lg">{turnTide.turnType === "进入喜运" ? "起" : "守"}</span>
+              </div>
+            </div>
+            
+            <h2 className="text-xl text-stone-200 tracking-widest font-light mb-3">
+              转潮
+            </h2>
+            <p className="text-sm text-stone-400 font-light mb-2">
+              {turnTide.previousDaYun?.gan}{turnTide.previousDaYun?.zhi}运 → {turnTide.daYun?.gan}{turnTide.daYun?.zhi}运
+            </p>
+            <p className={`text-sm font-light mb-8 ${
+              turnTide.turnType === "进入喜运" ? "text-emerald-400" : "text-rose-400"
+            }`}>
+              {turnTide.turnType === "进入喜运" ? "能量转向顺势——宜主动" : "能量转向守势——宜稳中求进"}
+            </p>
+            
+            {/* 转潮句占位 */}
+            {turnTide.turnSentence && (
+              <div className="bg-stone-800 rounded-lg p-4 mb-8">
+                <p className="text-stone-300 text-sm font-light italic leading-relaxed">
+                  {turnTide.turnSentence}
+                </p>
+              </div>
+            )}
+            
+            <button
+              onClick={handleTurnTideDismiss}
+              className="px-8 py-2.5 bg-stone-700 text-stone-200 text-sm tracking-wider font-light rounded-sm hover:bg-stone-600 transition-colors"
+            >
+              收下，回到运势图
+            </button>
+          </div>
+        </div>
+      )}
       {/* 顶部 */}
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-stone-200">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">

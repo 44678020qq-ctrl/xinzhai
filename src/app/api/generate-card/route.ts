@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { calculateBazi, baziToPrompt, getDayMasterWuxing, judgeStrength, findYongShen, calculateWuxingStrength } from '@/lib/bazi'
+import { calculateBazi, baziToPrompt, getDayMasterWuxing, judgeStrength, findYongShen, calculateWuxingStrength, calculateLiuNian, judgeGeJu, calculateDaYun } from '@/lib/bazi'
 
 // 基础神煞表（常用5种）
 const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => {position: string; description: string; warning?: string} | null}>> = {
@@ -10,7 +10,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const yimaZhi = ['寅', '申', '巳', '亥']
       const positions = ['year', 'month', 'day', 'hour'] as const
       for (const p of positions) {
-        if (b[p]?.zhi && yimaZhi.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '走动多，适合外地发展，行动力强', warning: '漂泊不定，静不下来' }
+        if (b[p]?.zhi && yimaZhi.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '你的能量待不住一处——在路上、在变动里，它才流得开', warning: '变动多了会散，偶尔也需要锚' }
       }
       return null
     }
@@ -24,7 +24,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = taohuaMap[dayZhi]
       const positions = ['year', 'month', 'day', 'hour'] as const
       for (const p of positions) {
-        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '人缘好，异性缘佳，有魅力', warning: '易招烂桃花，注意感情边界' }
+        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '人缘不差——但有些缘分靠近时，先看清再伸手', warning: '' }
       }
       return null
     }
@@ -41,7 +41,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const targets = guirenMap[b.day?.gan] || []
       const positions = ['year', 'month', 'day', 'hour'] as const
       for (const p of positions) {
-        if (b[p]?.zhi && targets.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '遇贵人相助，逢凶化吉', warning: '' }
+        if (b[p]?.zhi && targets.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '你的盘里留了一处暗接的善缘：最紧的关头，常有人从旁边伸手', warning: '' }
       }
       return null
     }
@@ -55,7 +55,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = huagaiMap[dayZhi]
       const positions = ['year', 'month', 'day', 'hour'] as const
       for (const p of positions) {
-        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '聪慧好学，有艺术/宗教/哲学天赋', warning: '易孤僻，需注意社交' }
+        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '你有一片朝内的天地——人多时你收着，独处时才真正亮起来', warning: '亮起来的地方，也容易关上门' }
       }
       return null
     }
@@ -72,7 +72,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       if (!target) return null
       const positions = ['year', 'month', 'day', 'hour'] as const
       for (const p of positions) {
-        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '学业/文运佳，思维敏捷，表达能力强', warning: '' }
+        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '你有一条偏内走的思路——不追热闹，但自己想得深、说得清', warning: '' }
       }
       return null
     }
@@ -225,7 +225,10 @@ export async function POST(request: NextRequest) {
       yongShen: yongShen,
       wuxingStrength: wxStrength.normalized,
       shenSha: calcShenSha(bazi),
-      tiaoHou: getTiaoHou(bazi.dayGan, bazi.month.zhi)
+      tiaoHou: getTiaoHou(bazi.dayGan, bazi.month.zhi),
+      liuNian: calculateLiuNian(new Date().getFullYear()),
+      geJu: judgeGeJu(bazi),
+      daYun: calculateDaYun(bazi, gender),
     }
 
     return NextResponse.json({
