@@ -78,9 +78,18 @@ export async function POST(request: NextRequest) {
     }
     
     // 检索匹配的钉子（风格锚 + few-shot）
+    // 兼容 bazi.strength 可能是对象或字符串
     let matchedJiaoZi = SEED_JIAOZI.slice(0, 3)
     if (bazi?.dayMaster && bazi?.strength) {
-      matchedJiaoZi = retrieveJiaoZi(bazi.dayMaster, bazi.strength, bazi.yongShen || [])
+      // 提取 strength 字符串
+      const strengthStr = typeof bazi.strength === 'string' 
+        ? bazi.strength 
+        : (bazi.strength?.level || '中和');
+      // 提取 yongShen 数组
+      const yongShenArr = Array.isArray(bazi.yongShen) 
+        ? bazi.yongShen 
+        : (bazi.yongShen?.yongShen || []);
+      matchedJiaoZi = retrieveJiaoZi(bazi.dayMaster, strengthStr, yongShenArr)
     }
 
     // 构建 system prompt（含钉子风格锚）
