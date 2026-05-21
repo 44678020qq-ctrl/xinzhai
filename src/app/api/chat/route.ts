@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { retrieveJiaoZi, SEED_JIAOZI } from '@/lib/jiaozi'
 import { checkHardList } from '@/lib/hardlist'
+import { callLLM } from '@/lib/llm'
 
 /**
  * 心斋 · AI 对话 API
@@ -79,10 +80,29 @@ export async function POST(request: NextRequest) {
     // 构建 system prompt（含钉子风格锚）
     const systemPrompt = buildSystemPrompt(matchedJiaoZi)
     
-    // MVP v0.2: 仍使用规则模板回复（LLM接入预留）
-    // TODO: 接入硅基流动/DeepSeek API，将 systemPrompt 作为 system message，
-    //       matchedJiaoZi 作为 few-shot，history 作为上下文
-    const reply = generateReply(message, bazi, matchedJiaoZi, history)
+    // ✅ LLM 已接入（判断-1：现在接）
+    let reply
+    try {
+      // 调用硅基流动 API（DeepSeek-V3模型）
+      const llmResult = await callLLM(systemPrompt, message, history)
+      
+      reply = {
+        reply: llmResult.reply,
+        reasoning: [
+          { step: "命局分析", content: bazi?.strength ? `日主${bazi.strength.level}，帮扶力${Math.round(bazi.strength.score * 100)}%` : "命局信息缺失" },
+          { step: "用神", content: bazi?.yongShen?.reason || "用神信息缺失" },
+          { step: "钉子匹配", content: `匹配${matchedJiaoZi.length}条钉子作为风格锚` },
+          { step: "LLM生成", content: "DeepSeek-V3 已基于钉子声音生成回复" }
+        ],
+        model: llmResult.model,
+        usage: llmResult.usage
+      }
+    } catch (error) {
+      // LLM调用失败，fallback到规则模板
+      console.error("LLM 调用失败，fallback到模板:", error)
+      reply = generateReply(message, bazi, matchedJiaoZi, history)
+      reply.reasoning?.unshift({ step: "降级", content: "LLM调用失败，已降级到规则模板" })
+    }
     
     // 保存对话记录
     if (user) {
