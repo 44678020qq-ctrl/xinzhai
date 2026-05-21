@@ -16,6 +16,58 @@ export interface BaziResult {
   dayZhi: string;
 }
 
+/** 大运 */
+export interface DaYun {
+  index: number;           // 大运序号（0-9）
+  gan: string;             // 大运天干
+  zhi: string;             // 大运地支
+  wuxing_gan: string;      // 天干五行
+  wuxing_zhi: string;      // 地支五行
+  startAge: number;        // 起运年龄
+  endAge: number;          // 止运年龄
+  energyMain: "帮扶" | "克泄耗";  // 能量主线
+}
+
+/** 流年 */
+export interface LiuNian {
+  year: number;            // 公历年份
+  gan: string;             // 流年天干
+  zhi: string;             // 流年地支
+  wuxing_gan: string;      // 天干五行
+  wuxing_zhi: string;      // 地支五行
+}
+
+/** 格局 */
+export interface GeJu {
+  name: string;            // 格局名称（如"正官格""偏财格"）
+  type: "正格" | "特殊格"; // 格局类型
+  reason: string;          // 判断依据
+}
+
+/** 完整命局（因果链输出） */
+export interface FullChart {
+  bazi: BaziResult;
+  strength: {
+    level: "极旺" | "旺" | "中和" | "弱" | "极弱";
+    score: number;
+    deLing: boolean;
+    deDi: boolean;
+    deSheng: boolean;
+    deZhu: boolean;
+  };
+  yongShen: {
+    yongShen: string[];
+    xiShen: string[];
+    jiShen: string[];
+    reason: string;
+  };
+  daYun: DaYun[];
+  liuNian: LiuNian[];      // 当前流年 + 近3年
+  geJu: GeJu;
+  shenSha: Array<{name: string; position: string; description: string}>;
+  tiaoHou: {yongShen: string; reason: string} | null;
+}
+
 // 天干 → 五行
 const GAN_WUXING: Record<string, string> = {
   甲: "木", 乙: "木",
@@ -444,4 +496,142 @@ ${hourStr}
 
 只返回纯 JSON，不要加 markdown 代码块。
 `.trim();
+}
+
+// ==================== 因果链补充字段（工单②） ====================
+
+/**
+ * 大运计算
+ * 基于月柱顺排/逆排，阳男阴女顺排，阴男阳女逆排
+ * 起运年龄 = 月柱距离节气天数 ÷ 3
+ */
+export function calculateDaYun(
+  bazi: BaziResult,
+  gender: "male" | "female",
+  startAge?: number  // 默认约4岁起运
+): DaYun[] {
+  const isYangGan = ["甲", "丙", "戊", "庚", "壬"].includes(bazi.year.gan);
+  const isMale = gender === "male";
+  const forward = (isYangGan && isMale) || (!isYangGan && !isMale);
+  
+  const GAN_LIST = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+  const ZHI_LIST = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+  
+  const monthGanIdx = GAN_LIST.indexOf(bazi.month.gan);
+  const monthZhiIdx = ZHI_LIST.indexOf(bazi.month.zhi);
+  
+  const result: DaYun[] = [];
+  const baseStartAge = startAge || 4; // MVP默认约4岁起运
+  const step = forward ? 1 : -1;
+  
+  // 日主五行用于判断能量主线
+  const dayMasterWx = bazi.day.wuxing_gan;
+  const cycle = ["木", "火", "土", "金", "水"];
+  const idx = cycle.indexOf(dayMasterWx);
+  const shengWo = cycle[(idx + 4) % 5];
+  const tongLei = dayMasterWx;
+  
+  for (let i = 1; i <= 8; i++) { // 8步大运
+    const ganIdx = (monthGanIdx + i * step + 10) % 10;
+    const zhiIdx = (monthZhiIdx + i * step + 12) % 12;
+    const gan = GAN_LIST[ganIdx];
+    const zhi = ZHI_LIST[zhiIdx];
+    const wuxing_gan = GAN_WUXING[gan];
+    const wuxing_zhi = ZHI_WUXING[zhi];
+    
+    // 能量主线：大运五行帮扶日主 → "帮扶"，否则 → "克泄耗"
+    const isHelp = wuxing_gan === tongLei || wuxing_gan === shengWo;
+    
+    result.push({
+      index: i - 1,
+      gan, zhi, wuxing_gan, wuxing_zhi,
+      startAge: baseStartAge + (i - 1) * 10,
+      endAge: baseStartAge + i * 10 - 1,
+      energyMain: isHelp ? "帮扶" : "克泄耗"
+    });
+  }
+  
+  return result;
+}
+
+/**
+ * 流年计算（当前年 + 近3年）
+ */
+export function calculateLiuNian(currentYear: number): LiuNian[] {
+  const GAN_LIST = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+  const ZHI_LIST = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+  
+  const result: LiuNian[] = [];
+  for (let offset = -1; offset <= 2; offset++) {
+    const year = currentYear + offset;
+    // 公历年份 → 干支：(year - 4) % 10 为天干索引，(year - 4) % 12 为地支索引
+    const ganIdx = ((year - 4) % 10 + 10) % 10;
+    const zhiIdx = ((year - 4) % 12 + 12) % 12;
+    const gan = GAN_LIST[ganIdx];
+    const zhi = ZHI_LIST[zhiIdx];
+    result.push({
+      year,
+      gan, zhi,
+      wuxing_gan: GAN_WUXING[gan],
+      wuxing_zhi: ZHI_WUXING[zhi]
+    });
+  }
+  return result;
+}
+
+/**
+ * 格局判断
+ * 基于月支藏干本气透干 → 正格；特殊情况 → 特殊格
+ */
+export function judgeGeJu(bazi: BaziResult): GeJu {
+  const monthZhi = bazi.month.zhi;
+  const hidden = HIDDEN_STEMS[monthZhi] || [];
+  
+  // 日主十神关系表
+  const dayGan = bazi.dayGan;
+  const GAN_LIST = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+  const dayIdx = GAN_LIST.indexOf(dayGan);
+  
+  // 十神名称
+  const TEN_GODS_MAP: Record<string, Record<string, string>> = {
+    "甲": {"甲":"比肩","乙":"劫财","丙":"食神","丁":"伤官","戊":"偏财","己":"正财","庚":"七杀","辛":"正官","壬":"偏印","癸":"正印"},
+    "乙": {"甲":"劫财","乙":"比肩","丙":"伤官","丁":"食神","戊":"正财","己":"偏财","庚":"正官","辛":"七杀","壬":"正印","癸":"偏印"},
+    "丙": {"甲":"偏印","乙":"正印","丙":"比肩","丁":"劫财","戊":"食神","己":"伤官","庚":"偏财","辛":"正财","壬":"七杀","癸":"正官"},
+    "丁": {"甲":"正印","乙":"偏印","丙":"劫财","丁":"比肩","戊":"伤官","己":"食神","庚":"正财","辛":"偏财","壬":"正官","癸":"七杀"},
+    "戊": {"甲":"七杀","乙":"正官","丙":"偏印","丁":"正印","戊":"比肩","己":"劫财","庚":"食神","辛":"伤官","壬":"偏财","癸":"正财"},
+    "己": {"甲":"正官","乙":"七杀","丙":"正印","丁":"偏印","戊":"劫财","己":"比肩","庚":"伤官","辛":"食神","壬":"正财","癸":"偏财"},
+    "庚": {"甲":"偏财","乙":"正财","丙":"七杀","丁":"正官","戊":"偏印","己":"正印","庚":"比肩","辛":"劫财","壬":"食神","癸":"伤官"},
+    "辛": {"甲":"正财","乙":"偏财","丙":"正官","丁":"七杀","戊":"正印","己":"偏印","庚":"劫财","辛":"比肩","壬":"伤官","癸":"食神"},
+    "壬": {"甲":"食神","乙":"伤官","丙":"偏财","丁":"正财","戊":"七杀","己":"正官","庚":"偏印","辛":"正印","壬":"比肩","癸":"劫财"},
+    "癸": {"甲":"伤官","乙":"食神","丙":"正财","丁":"偏财","戊":"正官","己":"七杀","庚":"正印","辛":"偏印","壬":"劫财","癸":"比肩"},
+  };
+  
+  // 月支本气
+  const benQiGan = hidden.find(h => h.type === "本气")?.gan;
+  if (!benQiGan) {
+    return { name: "未定", type: "正格", reason: `月支${monthZhi}无本气藏干` };
+  }
+  
+  // 本气透干（出现在四柱天干中）→ 取格局
+  const pillars = [bazi.year.gan, bazi.month.gan, bazi.day.gan, bazi.hour?.gan];
+  const isTouGan = pillars.some(g => g === benQiGan);
+  
+  if (!isTouGan) {
+    // 本气未透，看中气
+    const zhongQiGan = hidden.find(h => h.type === "中气")?.gan;
+    if (zhongQiGan && pillars.some(g => g === zhongQiGan)) {
+      const shiShen = TEN_GODS_MAP[dayGan]?.[zhongQiGan] || "未知";
+      return { name: `${shiShen}格`, type: "正格", reason: `月支${monthZhi}中气${zhongQiGan}透干` };
+    }
+    return { name: "未定", type: "正格", reason: `月支${monthZhi}本气${benQiGan}未透干` };
+  }
+  
+  const shiShen = TEN_GODS_MAP[dayGan]?.[benQiGan] || "未知";
+  
+  // 比肩/劫财不成格
+  if (shiShen === "比肩" || shiShen === "劫财") {
+    return { name: "未定", type: "正格", reason: `月支本气为比劫，不成格` };
+  }
+  
+  return { name: `${shiShen}格`, type: "正格", reason: `月支${monthZhi}本气${benQiGan}透干，为${shiShen}` };
 }
