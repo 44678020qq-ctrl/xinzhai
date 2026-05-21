@@ -89,8 +89,9 @@ export async function POST(request: NextRequest) {
     // ✅ LLM 已接入（判断-1：现在接）
     let reply
     try {
-      // 调用硅基流动 API（DeepSeek-V3模型）
+      console.log('[chat] 调用LLM, message:', message.substring(0, 50))
       const llmResult = await callLLM(systemPrompt, message, history)
+      console.log('[chat] LLM返回:', JSON.stringify(llmResult).substring(0, 100))
       
       reply = {
         reply: llmResult.reply,
@@ -103,9 +104,9 @@ export async function POST(request: NextRequest) {
         model: llmResult.model,
         usage: llmResult.usage
       }
-    } catch (error) {
+    } catch (error: any) {
       // LLM调用失败，fallback到规则模板
-      console.error("LLM 调用失败，fallback到模板:", error)
+      console.error("LLM 调用失败，fallback到模板:", error?.message || error)
       reply = generateReply(message, bazi, matchedJiaoZi, history)
       reply.reasoning?.unshift({ step: "降级", content: "LLM调用失败，已降级到规则模板" })
     }

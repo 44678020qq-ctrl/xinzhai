@@ -145,12 +145,17 @@ export function retrieveJiaoZi(
 export function generateTodayJiaoZi(params: {
   dayMaster: string;
   dayMasterGan: string;
-  strength: string;
+  strength: string | { level: string; score: number };
   yongShen: string[];
   wuxingStrength: Record<string, number>;
   effects?: string[];
 }): string {
-  const { dayMaster, dayMasterGan, strength, yongShen, wuxingStrength, effects } = params;
+  const { dayMaster, dayMasterGan, strength: strengthInput, yongShen, wuxingStrength, effects } = params;
+  
+  // 兼容 strength 对象和字符串
+  const strength = typeof strengthInput === 'string' 
+    ? strengthInput 
+    : (strengthInput?.level || '中和');
   
   // 检索匹配的种子钉子
   const matched = retrieveJiaoZi(dayMaster, strength, yongShen);
