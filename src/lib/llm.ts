@@ -1,8 +1,8 @@
 /**
- * 心斋 · LLM 客户端（硅基流动 API）
+ * 心斋 · LLM 客户端（DeepSeek 官方 API）
  * 
- * 使用硅基流动提供的 DeepSeek-V3 模型
- * Endpoint: https://api.siliconflow.cn/v1/chat/completions
+ * 使用 DeepSeek-V4-Flash 模型
+ * Endpoint: https://api.deepseek.com/v1/chat/completions
  */
 
 interface Message {
@@ -22,7 +22,7 @@ interface LLMResponse {
 }
 
 /**
- * 调用硅基流动 API
+ * 调用 DeepSeek API
  * 
  * @param systemPrompt 系统提示词（含钉子few-shot）
  * @param userMessage 用户消息
@@ -34,10 +34,10 @@ export async function callLLM(
   userMessage: string,
   history: Message[] = []
 ): Promise<LLMResponse> {
-  const apiKey = process.env.SILICONFLOW_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
   
   if (!apiKey) {
-    throw new Error("SILICONFLOW_API_KEY 未配置");
+    throw new Error("DEEPSEEK_API_KEY 未配置");
   }
 
   // 构建消息序列
@@ -48,14 +48,14 @@ export async function callLLM(
   ];
 
   try {
-    const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "deepseek-ai/DeepSeek-V3",
+        model: "deepseek-chat",
         messages,
         temperature: 0.7,
         max_tokens: 300,  // 限制回复长度
@@ -93,10 +93,10 @@ export async function* streamLLM(
   userMessage: string,
   history: Message[] = []
 ): AsyncGenerator<string> {
-  const apiKey = process.env.SILICONFLOW_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
   
   if (!apiKey) {
-    throw new Error("SILICONFLOW_API_KEY 未配置");
+    throw new Error("DEEPSEEK_API_KEY 未配置");
   }
 
   const messages: Message[] = [
@@ -105,14 +105,14 @@ export async function* streamLLM(
     { role: "user", content: userMessage }
   ];
 
-  const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
+  const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: "deepseek-ai/DeepSeek-V3",
+      model: "deepseek-chat",
       messages,
       temperature: 0.7,
       max_tokens: 300,
