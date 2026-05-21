@@ -6,6 +6,7 @@ import Link from "next/link";
 const tabs = [
   { href: "/register", label: "入斋", paths: ["/register", "/"] },
   { href: "/card", label: "命签", paths: ["/card"] },
+  { href: "/flow", label: "流年", paths: ["/flow"] },
   { href: "/match", label: "遇合", paths: ["/match"] },
   { href: "/chat", label: "对谈", paths: ["/chat"] },
 ];
