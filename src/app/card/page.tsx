@@ -28,6 +28,8 @@ interface CardData {
     reason: string;
   };
   wuxingStrength?: Record<string, number>;
+  shenSha?: Array<{name: string; position: string; description: string; warning?: string}>;
+  tiaoHou?: { coreNeed: string[]; reason: string; avoid: string[] };
 }
 
 interface BaziResult {
@@ -117,6 +119,14 @@ export default function CardPage() {
                   reason: yongReason,
                 },
                 wuxingStrength: wxNorm,
+                shenSha: (a.shen_sha || []).map((s: {name: string; position: string; description: string; warning?: string}) => ({
+                  name: s.name, position: s.position, description: s.description, warning: s.warning,
+                })),
+                tiaoHou: a.tiao_hou ? {
+                  coreNeed: a.tiao_hou.core_need || [],
+                  reason: a.tiao_hou.reason || '',
+                  avoid: a.tiao_hou.avoid || [],
+                } : undefined,
               };
               const baziResult: BaziResult = {
                 year: pillars[0] || { gan: '?', zhi: '?', wuxing_gan: '' },
@@ -406,15 +416,42 @@ export default function CardPage() {
                         <div key={wx} className="flex items-center gap-2">
                           <span className="text-[9px] text-ink-500 w-3 font-light">{wx}</span>
                           <div className="flex-1 h-1.5 bg-ink-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${colorMap[wx] || "bg-ink-300"}`}
-                              style={{ width: `${Math.max(2, pct)}%` }}
-                            />
+                            <div className={`h-full rounded-full ${colorMap[wx] || "bg-ink-300"}`} style={{ width: `${Math.max(2, pct)}%` }} />
                           </div>
                           <span className="text-[9px] text-ink-400 w-7 text-right font-light">{pct}%</span>
                         </div>
                       );
                     })}
+                </div>
+              </div>
+            )}
+
+            {/* 神煞 */}
+            {card.shenSha && card.shenSha.length > 0 && (
+              <div className="rounded-sm p-4 space-y-2">
+                <p className="text-[10px] text-ink-500 tracking-wider font-light">神煞</p>
+                <div className="space-y-2">
+                  {card.shenSha.map((ss, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-[10px] text-ink-700 font-medium shrink-0">{ss.name}</span>
+                      <span className="text-[10px] text-ink-400 font-light">{ss.position}</span>
+                      <span className="text-[10px] text-ink-500 font-light flex-1">{ss.description}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 调候 */}
+            {card.tiaoHou && card.tiaoHou.coreNeed.length > 0 && (
+              <div className="bg-gradient-to-r from-sky-50/50 to-blue-50/30 rounded-sm p-4 space-y-2">
+                <p className="text-[10px] text-sky-700 tracking-wider font-light">🌡 调候</p>
+                <p className="text-xs text-sky-900/80 leading-relaxed font-light">{card.tiaoHou.reason}</p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <span className="text-[10px] text-sky-700 font-light">需：</span>
+                  {card.tiaoHou.coreNeed.map(n => (
+                    <span key={n} className="text-[10px] text-sky-800 px-1.5 py-0.5 bg-sky-100/50 rounded-sm font-light">{n}</span>
+                  ))}
                 </div>
               </div>
             )}
