@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { calculateBazi, judgeStrength, findYongShen } from '@/lib/bazi'
 import { InkMark } from '@/components/InkMark'
+import { SolarTimeTrace } from '@/components/SolarTimeTrace'
 
 const SHICHEN = [
   { label: '子时', range: '23:00-01:00', hour: 0 },
@@ -273,6 +274,17 @@ export default function RegisterPage() {
             />
             <span className="text-[11px] text-ink-500 font-light">这是农历日期</span>
           </label>
+
+          {/* 真太阳时 trace（工单-02） */}
+          {formData.birth_hour && parseInt(formData.birth_year) > 0 && parseInt(formData.birth_month) > 0 && parseInt(formData.birth_day) > 0 && (
+            <SolarTimeTrace
+              birthYear={parseInt(formData.birth_year)}
+              birthMonth={parseInt(formData.birth_month)}
+              birthDay={parseInt(formData.birth_day)}
+              birthHour={parseInt(formData.birth_hour)}
+              birthMinute={parseInt(formData.birth_minute) || 0}
+            />
+          )}
 
           {/* 提交 */}
           <button
