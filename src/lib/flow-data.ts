@@ -1,12 +1,11 @@
 /**
- * 心斋「流」页数据层 v2
+ * 心斋「流」页数据层 v3
  * 参考 lifekline K线结构，用真实八字规则引擎驱动
  *
- * 核心改进：
- * - 大运：基于 calculateDaYun() 真实排盘（阳男阴女顺排/逆排）
- * - 评分：日主 × 流年干支 × 大运干支 三层生克叠加
- * - 波动：基于五行力量对比，不是 Math.random
- * - 解读：四段式（定调/论断/依据/出处），参考 STAR_DB
+ * v3 关键修正：
+ * - 评分根据旺衰翻转十神好坏（身旺喜克泄耗/身弱喜帮扶）
+ * - 真太阳时需出生地经纬度才有意义（Register需收集出生城市）
+ * - 大运帮扶/克泄耗的评价也根据旺衰翻转
  */
 
 import {
@@ -25,34 +24,37 @@ import {
 export interface FlowPoint {
   age: number;
   year: number;
-  daYun: string;        // 大运名称（如"庚申运"）
+  daYun: string;
   daYunEnergy: "帮扶" | "克泄耗";
-  ganZhi: string;       // 流年干支
-  open: number;         // 年初运势
-  close: number;        // 年末运势
-  high: number;         // 年中最高
-  low: number;          // 年中最低
-  score: number;        // 综合评分
-  reason: string;       // 四段式解读
+  ganZhi: string;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  score: number;
+  reason: string;
 }
 
 export interface LifeEvent {
   age: number;
   year: number;
-  type: 'career' | 'love' | 'health' | 'wealth' | 'family' | 'turn';  // turn=转潮
+  type: 'career' | 'love' | 'health' | 'wealth' | 'family' | 'turn';
   title: string;
   description: string;
-  ganZhi: string;       // 流年干支
-  energy: "帮扶" | "克泄耗" | "中性";
+  ganZhi: string;
+  energy: "喜" | "忌" | "中性";  // 改为喜/忌，更符合命理语言
 }
 
 export interface FlowData {
-  bazi: string[];       // 四柱干支
-  dayMaster: string;    // 日主天干
-  dayMasterWuxing: string; // 日主五行
-  strengthLevel: string;   // 旺衰
-  yongShen: string[];      // 用神
-  daYunList: DaYun[];      // 大运列表
+  bazi: string[];
+  dayMaster: string;
+  dayMasterWuxing: string;
+  strengthLevel: string;     // 极旺/旺/中和/弱/极弱
+  yongShen: string[];        // 用神五行
+  xiShen: string[];          // 喜神五行
+  jiShen: string[];          // 忌神五行
+  isStrong: boolean;         // 身旺还是身弱（评分核心依据）
+  daYunList: DaYun[];
   chartPoints: FlowPoint[];
   events: LifeEvent[];
 }
@@ -76,18 +78,36 @@ function getShiShen(dayGan: string, otherGan: string): string {
   return TEN_GODS[dayGan]?.[otherGan] || "未知";
 }
 
-// ────────────────── 运势评分引擎 ──────────────────
+/**
+ * 十神分类：帮扶类 vs 克泄耗类
+ * 帮扶 = 生我(印) + 同我(比劫)
+ * 克泄耗 = 克我(官杀) + 我生(食伤) + 我克(财)
+ */
+function classifyShiShen(ss: string): "帮扶" | "克泄耗" {
+  if (["正印", "偏印", "比肩", "劫财"].includes(ss)) return "帮扶";
+  if (["正官", "七杀", "食神", "伤官", "正财", "偏财"].includes(ss)) return "克泄耗";
+  return "帮扶"; // fallback
+}
+
+// ────────────────── 运势评分引擎 v3 ──────────────────
 
 /**
- * 三层叠加评分：日主 × 流年 × 大运
+ * 根据旺衰翻转十神评分
  * 
- * 1. 流年天干 vs 日主 → 十神关系 → 基础分
- * 2. 流年地支藏干 → 加权
- * 3. 大运帮扶/克泄耗 → 背景分
- * 4. 月令旺衰 → 微调
+ * 命理核心逻辑：
+ * 身旺 → 喜克泄耗（官杀食伤财是好事），忌帮扶（印比劫是坏事）
+ * 身弱 → 喜帮扶（印比劫是好事），忌克泄耗（官杀食伤财是坏事）
+ * 中和 → 两面都可，看程度
+ * 
+ * 评分结构：
+ * 1. 十神基础分（根据旺衰翻转）
+ * 2. 藏干加权（同样根据旺衰翻转方向）
+ * 3. 大运背景（身旺遇帮扶=减分，身弱遇帮扶=加分）
+ * 4. 月令微调
  */
 export function calculateFlowScore(
   bazi: BaziResult,
+  strength: { level: string; score: number; deLing?: boolean; deDi?: boolean; deSheng?: boolean; deZhu?: boolean },
   liuNianGan: string,
   liuNianZhi: string,
   daYun: DaYun | null,
@@ -95,59 +115,123 @@ export function calculateFlowScore(
   
   const dayGan = bazi.dayGan;
   const dayWx = bazi.day.wuxing_gan;
+  const isStrong = strength.level === "极旺" || strength.level === "旺";
+  const isWeak = strength.level === "极弱" || strength.level === "弱";
   
-  // ── 第一层：流年天干十神 → 基础分 ──
+  // ── 十神 → 基础分（根据旺衰翻转）──
   const shiShen = getShiShen(dayGan, liuNianGan);
-  const SHISHEN_SCORE: Record<string, number> = {
-    "比肩": 72, "劫财": 65,
-    "食神": 80, "伤官": 60,
-    "偏财": 62, "正财": 68,
-    "七杀": 48, "正官": 58,
-    "偏印": 70, "正印": 82,
-  };
-  const baseScore = SHISHEN_SCORE[shiShen] || 60;
+  const ssType = classifyShiShen(shiShen);
   
-  // ── 第二层：流年地支藏干 → 加权 ──
+  // 身旺：克泄耗类高分，帮扶类低分
+  // 身弱：帮扶类高分，克泄耗类低分
+  // 中和：都中等，略有偏好
+  
+  const STRONG_SCORES: Record<string, number> = {
+    // 身旺喜克泄耗
+    "七杀": 82, "正官": 78,   // 克我 → 制身有功
+    "食神": 85, "伤官": 75,   // 我生 → 泄秀顺畅
+    "偏财": 80, "正财": 76,   // 我克 → 财星得用
+    // 身旺忌帮扶
+    "比肩": 45, "劫财": 38,   // 同我 → 争财夺利
+    "偏印": 42, "正印": 48,   // 生我 → 印绶太过
+  };
+  
+  const WEAK_SCORES: Record<string, number> = {
+    // 身弱喜帮扶
+    "正印": 88, "偏印": 82,   // 生我 → 印绶护身
+    "比肩": 80, "劫财": 72,   // 同我 → 劫财帮身
+    // 身弱忌克泄耗
+    "七杀": 35, "正官": 42,   // 克我 → 官杀攻身
+    "食神": 55, "伤官": 40,   // 我生 → 泄身太过
+    "偏财": 48, "正财": 52,   // 我克 → 财星耗身
+  };
+  
+  const NEUTRAL_SCORES: Record<string, number> = {
+    "比肩": 68, "劫财": 60,
+    "食神": 72, "伤官": 62,
+    "偏财": 65, "正财": 68,
+    "七杀": 55, "正官": 62,
+    "偏印": 68, "正印": 72,
+  };
+  
+  let baseScore: number;
+  if (isStrong) {
+    baseScore = STRONG_SCORES[shiShen] || 60;
+  } else if (isWeak) {
+    baseScore = WEAK_SCORES[shiShen] || 60;
+  } else {
+    baseScore = NEUTRAL_SCORES[shiShen] || 60;
+  }
+  
+  // ── 藏干加权（同样根据旺衰翻转）──
   const hidden = HIDDEN_STEMS[liuNianZhi] || [];
   let zhiBonus = 0;
   for (const h of hidden) {
     const ss = getShiShen(dayGan, h.gan);
-    if (["正印", "偏印", "比肩"].includes(ss)) zhiBonus += h.weight * 5;
-    if (["七杀", "正官", "伤官"].includes(ss)) zhiBonus -= h.weight * 5;
+    const ssClass = classifyShiShen(ss);
+    if (isStrong) {
+      // 身旺：克泄耗藏干加分，帮扶藏干减分
+      if (ssClass === "克泄耗") zhiBonus += h.weight * 5;
+      else zhiBonus -= h.weight * 5;
+    } else if (isWeak) {
+      // 身弱：帮扶藏干加分，克泄耗藏干减分
+      if (ssClass === "帮扶") zhiBonus += h.weight * 5;
+      else zhiBonus -= h.weight * 5;
+    } else {
+      // 中和：轻微偏好
+      if (ssClass === "帮扶") zhiBonus += h.weight * 2;
+      else zhiBonus += h.weight * 2;
+    }
   }
   
-  // ── 第三层：大运帮扶/克泄耗 → 背景分 ──
+  // ── 大运背景（根据旺衰翻转）──
   let daYunBonus = 0;
   if (daYun) {
-    if (daYun.energyMain === "帮扶") daYunBonus = 8;
-    else daYunBonus = -5;
-    const daYunShiShen = getShiShen(dayGan, daYun.gan);
-    if (["正印", "偏印"].includes(daYunShiShen)) daYunBonus += 4;
-    if (["七杀", "正官"].includes(daYunShiShen)) daYunBonus -= 3;
+    if (isStrong) {
+      // 身旺遇帮扶运 = 减分（太过）
+      // 身旺遇克泄耗运 = 加分（制身有功）
+      if (daYun.energyMain === "帮扶") daYunBonus = -8;
+      else daYunBonus = 10;
+    } else if (isWeak) {
+      // 身弱遇帮扶运 = 加分（帮身有力）
+      // 身弱遇克泄耗运 = 减分（克泄太过）
+      if (daYun.energyMain === "帮扶") daYunBonus = 10;
+      else daYunBonus = -8;
+    } else {
+      // 中和：帮扶略加分
+      if (daYun.energyMain === "帮扶") daYunBonus = 4;
+      else daYunBonus = 2;
+    }
   }
   
-  // ── 第四层：月令季节系数 → 微调 ──
+  // ── 月令微调 ──
   const monthZhi = bazi.month.zhi;
   const seasonCoeff = SEASON_STRENGTH[monthZhi]?.[dayWx] || 1;
-  const seasonBonus = (seasonCoeff - 1) * 5;
+  const seasonBonus = (seasonCoeff - 1) * 3; // 微调±3
   
   // ── 综合评分 ──
   const rawScore = baseScore + zhiBonus + daYunBonus + seasonBonus;
   const score = Math.round(Math.max(30, Math.min(95, rawScore)));
   
-  // ── 波动：基于五行力量对比 ──
+  // ── 波动 ──
   const wuxingStr = calculateWuxingStrength(bazi);
   const helpRatio = wuxingStr.normalized[dayWx];
-  const volatility = Math.abs(helpRatio - 0.3) * 15;
+  // 越偏离平衡，波动越大
+  const volatility = Math.abs(helpRatio - 0.25) * 20;
   
-  const open = Math.round(Math.max(30, score - volatility * 0.6));
-  const close = Math.round(Math.min(95, score + volatility * 0.4));
+  const open = Math.round(Math.max(30, score - volatility * 0.5));
+  const close = Math.round(Math.min(95, score + volatility * 0.3));
   const high = Math.round(Math.min(95, score + volatility));
   const low = Math.round(Math.max(30, score - volatility));
   
   // ── 四段式解读 ──
-  const energyLabel = score >= 70 ? "帮扶为主" : score >= 50 ? "中平偏稳" : "克泄耗为主";
-  const reason = `${liuNianGan}${liuNianZhi}年，${shiShen}主事，${energyLabel}。流年天干${liuNianGan}为${shiShen}，地支${liuNianZhi}藏${hidden.map(h => h.gan).join("/")}。大运${daYun ? `${daYun.gan}${daYun.zhi}(${daYun.energyMain})` : "童限"}，${score >= 70 ? "顺势可为，把握机遇" : score >= 50 ? "宜守不宜攻，稳中求进" : "需谨慎行事，积蓄力量"}。`;
+  const isXi = (isStrong && ssType === "克泄耗") || (isWeak && ssType === "帮扶");
+  const energyLabel = isXi ? "喜神到位" : "忌神当令";
+  const advice = isXi 
+    ? "顺势可为，把握机遇" 
+    : score >= 50 ? "宜守不宜攻，稳中求进" : "需谨慎行事，积蓄力量";
+  
+  const reason = `${liuNianGan}${liuNianZhi}年，${shiShen}主事。${isStrong ? "身旺" : isWeak ? "身弱" : "中和"}日主遇${ssType}类十神，${energyLabel}。${isXi ? `${shiShen}为喜，能量顺势流动` : `${shiShen}为忌，需克制冲动`}。大运${daYun ? `${daYun.gan}${daYun.zhi}(${isStrong ? (daYun.energyMain === "帮扶" ? "忌运" : "喜运") : isWeak ? (daYun.energyMain === "帮扶" ? "喜运" : "忌运") : daYun.energyMain})` : "童限"}，${advice}。`;
   
   return { score, open, close, high, low, reason };
 }
@@ -156,78 +240,86 @@ export function calculateFlowScore(
 
 function deduceLifeEvents(
   bazi: BaziResult,
+  strength: { level: string; score: number },
+  yongShenResult: { yongShen: string[]; xiShen: string[]; jiShen: string[]; reason: string },
   daYunList: DaYun[],
   birthYear: number,
 ): LifeEvent[] {
   const events: LifeEvent[] = [];
   const dayGan = bazi.dayGan;
+  const isStrong = strength.level === "极旺" || strength.level === "旺";
   
   // ── 大运转潮点 ──
   for (const dy of daYunList) {
     const daYunShiShen = getShiShen(dayGan, dy.gan);
-    if (dy.energyMain === "帮扶") {
+    // 根据旺衰判断大运是喜还是忌
+    const isXiDy = isStrong ? (dy.energyMain === "克泄耗") : (!isStrong && dy.energyMain === "帮扶");
+    
+    if (isXiDy) {
       events.push({
         age: dy.startAge, year: birthYear + dy.startAge,
         type: "turn", title: `${dy.gan}${dy.zhi}运·势起`,
-        description: `进入${daYunShiShen}主事的帮扶大运，${dy.startAge}-${dy.endAge}岁间能量偏助，宜顺势发力`,
-        ganZhi: `${dy.gan}${dy.zhi}`, energy: "帮扶",
+        description: `进入${daYunShiShen}主事的喜运，${dy.startAge}-${dy.endAge}岁间${isStrong ? "克泄耗制身有功" : "帮扶得力"}，宜顺势发力`,
+        ganZhi: `${dy.gan}${dy.zhi}`, energy: "喜",
       });
     } else {
       events.push({
         age: dy.startAge, year: birthYear + dy.startAge,
         type: "turn", title: `${dy.gan}${dy.zhi}运·守成`,
-        description: `进入${daYunShiShen}主事的克泄耗大运，${dy.startAge}-${dy.endAge}岁间需稳中求进`,
-        ganZhi: `${dy.gan}${dy.zhi}`, energy: "克泄耗",
+        description: `进入${daYunShiShen}主事的忌运，${dy.startAge}-${dy.endAge}岁间需稳中求进`,
+        ganZhi: `${dy.gan}${dy.zhi}`, energy: "忌",
       });
     }
   }
   
-  // ── 通用人生节点 ──
-  const universal: Array<{age: number, type: LifeEvent['type'], title: string, desc: string}> = [
-    { age: 6, type: "family", title: "启蒙", desc: "入学启蒙，开始接受教育" },
-    { age: 18, type: "career", title: "立门", desc: "成年之始，步入社会或继续深造" },
-    { age: 22, type: "career", title: "初入", desc: "初入职场，试探人生方向" },
-  ];
-  
-  // ── 婚恋推算（日支十神）──
+  // ── 婚恋推算 ──
   const dayZhiHidden = HIDDEN_STEMS[bazi.day.zhi] || [];
   const dayZhiMain = dayZhiHidden.find(h => h.type === "本气")?.gan;
   if (dayZhiMain) {
     const dayZhiSS = getShiShen(dayGan, dayZhiMain);
+    // 身旺日支财官 = 婚恋有利且较早
+    // 身弱日支财官 = 婚恋压力大
     if (["正财", "偏财", "正官", "七杀"].includes(dayZhiSS)) {
       events.push({
-        age: 26, year: birthYear + 26, type: "love",
-        title: "姻缘初动", description: `日支${dayZhiSS}，感情运较早启动`,
-        ganZhi: "", energy: "中性",
+        age: isStrong ? 24 : 28, year: birthYear + (isStrong ? 24 : 28), type: "love",
+        title: isStrong ? "姻缘早动" : "姻缘渐进",
+        description: `日支${dayZhiSS}，${isStrong ? "身旺能担财官，感情运较早启动" : "身弱需积力方能担财官，感情运稍迟"}`,
+        ganZhi: "", energy: isStrong ? "喜" : "中性",
       });
     } else {
       events.push({
         age: 30, year: birthYear + 30, type: "love",
-        title: "姻缘渐进", description: `日支${dayZhiSS}，感情运需耐心等待`,
+        title: "姻缘待时",
+        description: `日支${dayZhiSS}，感情需耐心等待`,
         ganZhi: "", energy: "中性",
       });
     }
   }
   
   // ── 事业高峰推算 ──
-  const peakDy = daYunList.find(dy => dy.energyMain === "帮扶" && dy.startAge >= 28 && dy.startAge <= 42);
+  // 身旺：克泄耗运中期是事业高峰
+  // 身弱：帮扶运中期是事业高峰
+  const peakDy = isStrong
+    ? daYunList.find(dy => dy.energyMain === "克泄耗" && dy.startAge >= 25 && dy.startAge <= 45)
+    : daYunList.find(dy => dy.energyMain === "帮扶" && dy.startAge >= 25 && dy.startAge <= 45);
   if (peakDy) {
     events.push({
       age: peakDy.startAge + 3, year: birthYear + peakDy.startAge + 3,
       type: "career", title: "事业攀升",
-      description: `${peakDy.gan}${peakDy.zhi}帮扶运中期，事业能量集中释放`,
-      ganZhi: `${peakDy.gan}${peakDy.zhi}`, energy: "帮扶",
+      description: `${peakDy.gan}${peakDy.zhi}${isStrong ? "克泄耗" : "帮扶"}运中期，事业能量集中释放`,
+      ganZhi: `${peakDy.gan}${peakDy.zhi}`, energy: "喜",
     });
   }
   
   // ── 通用节点 ──
+  const universal: Array<{age: number, type: LifeEvent['type'], title: string, desc: string}> = [
+    { age: 6, type: "family", title: "启蒙", desc: "入学启蒙" },
+    { age: 18, type: "career", title: "立门", desc: "成年之始" },
+    { age: 22, type: "career", title: "初入", desc: "初入职场" },
+  ];
   for (const ue of universal) {
     if (!events.find(e => e.age === ue.age)) {
-      events.push({
-        age: ue.age, year: birthYear + ue.age, type: ue.type,
-        title: ue.title, description: ue.desc,
-        ganZhi: "", energy: "中性",
-      });
+      events.push({ age: ue.age, year: birthYear + ue.age, type: ue.type, title: ue.title, description: ue.desc, ganZhi: "", energy: "中性" });
     }
   }
   
@@ -245,6 +337,7 @@ export function generateFlowData(
   const strength = judgeStrength(bazi);
   const yongShen = findYongShen(bazi);
   const daYunList = calculateDaYun(bazi, gender);
+  const isStrong = strength.level === "极旺" || strength.level === "旺";
   
   const GANS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
   const ZHIS = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
@@ -263,7 +356,7 @@ export function generateFlowData(
     const currentDaYun = daYunList.find(dy => age >= dy.startAge && age <= dy.endAge) || null;
     
     const { score, open, close, high, low, reason } = calculateFlowScore(
-      bazi, liuNianGan, liuNianZhi, currentDaYun
+      bazi, strength, liuNianGan, liuNianZhi, currentDaYun
     );
     
     chartPoints.push({
@@ -275,7 +368,7 @@ export function generateFlowData(
     });
   }
   
-  const events = deduceLifeEvents(bazi, daYunList, birthYear);
+  const events = deduceLifeEvents(bazi, strength, yongShen, daYunList, birthYear);
   
   const baziStr = [
     `${bazi.year.gan}${bazi.year.zhi}`,
@@ -290,6 +383,9 @@ export function generateFlowData(
     dayMasterWuxing: bazi.day.wuxing_gan,
     strengthLevel: strength.level,
     yongShen: yongShen.yongShen,
+    xiShen: yongShen.xiShen,
+    jiShen: yongShen.jiShen,
+    isStrong,
     daYunList,
     chartPoints,
     events,

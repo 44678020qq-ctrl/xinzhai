@@ -86,7 +86,7 @@ export default function FlowPage() {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-stone-800">流年运势</h1>
           <div className="text-sm text-stone-500">
-            {flowData.dayMasterWuxing}日主·{flowData.strengthLevel} · {flowData.bazi.join(" ")}
+            {flowData.dayMasterWuxing}日主·{flowData.strengthLevel}({flowData.isStrong ? "喜克泄耗" : "喜帮扶"}) · {flowData.bazi.join(" ")}
           </div>
         </div>
       </header>
@@ -186,11 +186,11 @@ export default function FlowPage() {
                     {dy.gan}{dy.zhi}
                   </div>
                   <div className={`text-xs mt-1 ${
-                    dy.energyMain === "帮扶"
+                    (flowData.isStrong ? dy.energyMain === "克泄耗" : dy.energyMain === "帮扶")
                       ? "text-emerald-600"
                       : "text-rose-600"
                   }`}>
-                    {dy.energyMain} · {Math.round(avgScore)}分
+                    {(flowData.isStrong ? dy.energyMain === "克泄耗" : dy.energyMain === "帮扶") ? "喜运" : "忌运"} · {Math.round(avgScore)}分
                   </div>
                 </div>
               );
@@ -215,7 +215,7 @@ export default function FlowPage() {
                 {/* 类型图标 */}
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm ${
                   event.type === "turn"
-                    ? event.energy === "帮扶" ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
+                    ? event.energy === "喜" ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
                     : event.type === "career"
                     ? "bg-blue-100 text-blue-600"
                     : event.type === "love"
@@ -226,7 +226,7 @@ export default function FlowPage() {
                     ? "bg-amber-100 text-amber-600"
                     : "bg-slate-100 text-slate-600"
                 }`}>
-                  {event.type === "turn" ? (event.energy === "帮扶" ? "起" : "守")
+                  {event.type === "turn" ? (event.energy === "喜" ? "起" : "守")
                     : event.type === "career" ? "事"
                     : event.type === "love" ? "情"
                     : event.type === "health" ? "健"
@@ -297,9 +297,10 @@ export default function FlowPage() {
                     {point.ganZhi}年
                   </span>
                   <span className={`px-2 py-1 rounded ${
-                    point.daYunEnergy === "帮扶" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                    (flowData.isStrong ? point.daYunEnergy === "克泄耗" : point.daYunEnergy === "帮扶")
+                      ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
                   }`}>
-                    {point.daYun} ({point.daYunEnergy})
+                    {point.daYun} ({(flowData.isStrong ? point.daYunEnergy === "克泄耗" : point.daYunEnergy === "帮扶") ? "喜运" : "忌运"})
                   </span>
                 </div>
               </div>
