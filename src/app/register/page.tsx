@@ -6,9 +6,26 @@ import { supabase } from '@/lib/supabase'
 import { calculateBazi, judgeStrength, findYongShen } from '@/lib/bazi'
 import { InkMark } from '@/components/InkMark'
 
+const SHICHEN = [
+  { label: '子时', range: '23:00-01:00', hour: 0 },
+  { label: '丑时', range: '01:00-03:00', hour: 1 },
+  { label: '寅时', range: '03:00-05:00', hour: 3 },
+  { label: '卯时', range: '05:00-07:00', hour: 5 },
+  { label: '辰时', range: '07:00-09:00', hour: 7 },
+  { label: '巳时', range: '09:00-11:00', hour: 9 },
+  { label: '午时', range: '11:00-13:00', hour: 11 },
+  { label: '未时', range: '13:00-15:00', hour: 13 },
+  { label: '申时', range: '15:00-17:00', hour: 15 },
+  { label: '酉时', range: '17:00-19:00', hour: 17 },
+  { label: '戌时', range: '19:00-21:00', hour: 19 },
+  { label: '亥时', range: '21:00-23:00', hour: 21 },
+]
+
 export default function RegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [showHourInput, setShowHourInput] = useState(false)
+  const [selectedShichen, setSelectedShichen] = useState<number | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     gender: '' as 'male' | 'female' | '',
@@ -19,6 +36,11 @@ export default function RegisterPage() {
     birth_minute: '',
     is_lunar: false
   })
+
+  const handleShichenSelect = (hour: number) => {
+    setSelectedShichen(hour)
+    setFormData(prev => ({ ...prev, birth_hour: String(hour), birth_minute: '' }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,7 +70,6 @@ export default function RegisterPage() {
         formData.is_lunar
       )
     } catch {
-      alert('日期无效，请检查')
       setLoading(false)
       return
     }
@@ -182,29 +203,59 @@ export default function RegisterPage() {
 
           {/* 出生时间 */}
           <div>
-            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
-              出生时间（选填，影响时柱）
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="number"
-                value={formData.birth_hour}
-                onChange={(e) => setFormData({ ...formData, birth_hour: e.target.value })}
-                className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
-                placeholder="时（0-23）"
-                min={0}
-                max={23}
-              />
-              <input
-                type="number"
-                value={formData.birth_minute}
-                onChange={(e) => setFormData({ ...formData, birth_minute: e.target.value })}
-                className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
-                placeholder="分"
-                min={0}
-                max={59}
-              />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] text-ink-500 tracking-wider font-light">
+                出生时辰（选填）
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowHourInput(!showHourInput)}
+                className="text-[10px] text-ink-400 hover:text-ink-600 font-light"
+              >
+                {showHourInput ? '用时辰选择' : '精确输入'}
+              </button>
             </div>
+
+            {showHourInput ? (
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  value={formData.birth_hour}
+                  onChange={(e) => { setSelectedShichen(null); setFormData({ ...formData, birth_hour: e.target.value }) }}
+                  className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
+                  placeholder="时（0-23）"
+                  min={0} max={23}
+                />
+                <input
+                  type="number"
+                  value={formData.birth_minute}
+                  onChange={(e) => setFormData({ ...formData, birth_minute: e.target.value })}
+                  className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
+                  placeholder="分"
+                  min={0} max={59}
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-1.5">
+                {SHICHEN.map(s => (
+                  <button
+                    key={s.hour}
+                    type="button"
+                    onClick={() => handleShichenSelect(s.hour)}
+                    className={`py-2 rounded-sm text-center transition-colors duration-200 ${
+                      selectedShichen === s.hour
+                        ? 'bg-ink-800 text-paper'
+                        : 'border border-ink-200 text-ink-500 hover:border-ink-400'
+                    }`}
+                  >
+                    <span className="block text-xs font-light">{s.label}</span>
+                    <span className={`block text-[9px] font-light ${selectedShichen === s.hour ? 'text-ink-300' : 'text-ink-400'}`}>
+                      {s.range}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 农历开关 */}
