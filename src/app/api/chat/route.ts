@@ -89,9 +89,9 @@ export async function POST(request: NextRequest) {
     // ✅ LLM 已接入（判断-1：现在接）
     let reply
     try {
-      console.log('[chat] 调用LLM, message:', message.substring(0, 50))
+      console.log('[chat] step1: 准备调用LLM')
       const llmResult = await callLLM(systemPrompt, message, history)
-      console.log('[chat] LLM返回:', JSON.stringify(llmResult).substring(0, 100))
+      console.log('[chat] step2: LLM返回成功, model=', llmResult?.model)
       
       reply = {
         reply: llmResult.reply,

@@ -48,6 +48,7 @@ export async function callLLM(
   ];
 
   try {
+    console.log('[llm] fetch start, url=https://api.deepseek.com')
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -63,6 +64,7 @@ export async function callLLM(
       })
     });
 
+    console.log('[llm] fetch ok, status=' + response.status)
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`LLM API 调用失败: ${response.status} ${error}`);
