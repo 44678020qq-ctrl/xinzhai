@@ -230,7 +230,7 @@ class YongShenAnalyzer:
         Args:
             bazi: 八字命盘
             wuxing_count: 五行计数
-            day_master_strength: 日主旺衰（"旺"|"强"|"中和"|"弱"|"极弱"）
+            day_master_strength: 日主旺衰（"极旺"|"旺"|"中和"|"弱"|"极弱"）
         
         Returns:
             yong_shen_list: 用神候选列表（按优先级排序）
@@ -298,7 +298,7 @@ class YongShenAnalyzer:
         
         dm_wuxing = TIAN_GAN_WUXING.get(day_master, "wood")
         
-        if day_master_strength in ["旺", "强"]:
+        if day_master_strength in ["极旺", "旺"]:
             # 克之、泄之、耗之
             ke_wuxing = KE_MAP.get(dm_wuxing)
             if ke_wuxing:
@@ -470,7 +470,7 @@ if __name__ == "__main__":
     yong_shen_list, xi_shen, ji_shen = analyzer.analyze_yong_shen(
         test_bazi,
         test_wuxing_count,
-        "强"
+        "旺"
     )
     
     print(f"\n用神候选（按优先级）：")

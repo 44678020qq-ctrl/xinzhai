@@ -184,7 +184,7 @@ class BaziCalculator:
         分析日主旺衰（带因果链）
         
         return:
-            strength: "旺" | "强" | "中和" | "弱" | "极弱"
+            strength: "极旺" | "旺" | "中和" | "弱" | "极弱"
             reason_chain: 因果推导链
         """
         reason_chain = []
@@ -270,14 +270,14 @@ class BaziCalculator:
             "step": 4,
             "factor": "综合评分",
             "evidence": f"总分 = {score} 分",
-            "logic": "旺 > 60分, 强 40-60分, 中和 30-40分, 弱 10-30分, 极弱 < 10分",
+            "logic": "极旺 > 60分, 旺 40-60分, 中和 30-40分, 弱 10-30分, 极弱 < 10分",
             "conclusion": "待定"
         }
         
         if score > 60:
-            strength = "旺"
+            strength = "极旺"
         elif score > 40:
-            strength = "强"
+            strength = "旺"
         elif score > 30:
             strength = "中和"
         elif score > 10:

@@ -1,33 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { retrieveJiaoZi, SEED_JIAOZI } from '@/lib/jiaozi'
+import { checkHardList } from '@/lib/hardlist'
 
 /**
  * 心斋 · AI 对话 API
  * 
- * MVP 版本：
- * - 使用种子钉子库作为 few-shot
- * - 基于规则层判断生成回复
- * - 后续接入硅基流动/DeepSeek API
+ * v0.2:
+ * - Hard List 前置拦截（工单-01 / B-18 / S-2）
+ * - 种子钉子库作为风格锚 few-shot（工单-06 / S-1）
+ * - 术语黑名单（六破、人元司令、盲派旺衰术语）
+ * - 四态边界约束（不滑向算命腔 / 不滑向心灵鸡汤）
+ * - 接入硅基流动/DeepSeek API（预留）
  */
+
+// ============ System Prompt 定义（工单-06 核心交付）============
+
+function buildSystemPrompt(matchedJiaoZi: any[]): string {
+  const jiaoZiExamples = matchedJiaoZi
+    .map((j, i) => `${i + 1}. ${j.content}`)
+    .join('\n');
+
+  return `你是心斋的对谈者，不是算命先生。
+
+【声音锚点——以下是你说话的方式】
+${jiaoZiExamples}
+
+【四态边界——你的语气只能在以下范围内切换】
+- 觉察态：描述能量状态，不下判词。如"今日金水极盛，你会感觉被夹在中间"
+- 映射态：将命理符号翻译成生活体验。如"你身上有把刀，但你一直没拔出来"
+- 方向态：给出开放性方向，不给封闭答案。如"找点让你有感觉的事——不用大，一点火星就够了"
+- 接住态：遇到难命局或大问题，哲学接住。如"看见当下，比定义命运更有用"
+绝对不能滑向：算命腔（"你命中注定"）、心灵鸡汤（"一切都会好的"）
+
+【术语白名单——只能用这些词说命理】
+可用：日主、旺衰、用神、喜忌、调候、帮扶、克泄耗、五行、能量、节奏、流动、做功
+禁用：六破、人元司令、盲派旺衰算法术语、禄命术语、任何你没有在钉子里见过的术语
+
+【核心原则】
+- 你说的是能量和节奏，不是命运和定数
+- 你描述当下和倾向，不预测未来
+- 你给方向和觉察，不给判词和指令
+- 难命局不主动给"先天难"下判词，用哲学接住
+- 每次回复控制在150字以内`;
+}
+
+// ============ API 主流程 ============
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { message, bazi, history = [] } = body
     
+    // 🔴 工单-01: Hard List 前置拦截（在一切生成之前）
+    const hardListResult = checkHardList(message)
+    if (hardListResult.blocked) {
+      return NextResponse.json({
+        reply: hardListResult.reply,
+        reasoning: [{
+          step: "安全拦截",
+          content: `命中红线: ${hardListResult.category}，已走拒答模板`
+        }],
+        verdict: "安全拦截",
+        blocked: true,
+        blockedCategory: hardListResult.category
+      })
+    }
+
     // 获取用户命局信息
     const { data: { user } } = await supabase.auth.getUser()
     
-    // 检索匹配的钉子（语言参考）
+    // 检索匹配的钉子（风格锚 + few-shot）
     let matchedJiaoZi = SEED_JIAOZI.slice(0, 3)
     if (bazi?.dayMaster && bazi?.strength) {
       matchedJiaoZi = retrieveJiaoZi(bazi.dayMaster, bazi.strength, bazi.yongShen || [])
     }
+
+    // 构建 system prompt（含钉子风格锚）
+    const systemPrompt = buildSystemPrompt(matchedJiaoZi)
     
-    // MVP: 简化版回复生成
-    // 后续接入 LLM API，使用规则层判断 + 种子钉子 few-shot
-    
+    // MVP v0.2: 仍使用规则模板回复（LLM接入预留）
+    // TODO: 接入硅基流动/DeepSeek API，将 systemPrompt 作为 system message，
+    //       matchedJiaoZi 作为 few-shot，history 作为上下文
     const reply = generateReply(message, bazi, matchedJiaoZi, history)
     
     // 保存对话记录
@@ -52,8 +106,9 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * 生成回复（简化版）
+ * 生成回复（简化版 + 四态边界约束）
  * MVP: 基于规则匹配 + 种子钉子风格
+ * TODO: 替换为 LLM API 调用
  */
 function generateReply(
   message: string,
@@ -90,16 +145,14 @@ function generateReply(
     content: `识别为「${intent.type}」类问题`
   })
   
-  // Step 4: 生成回复
+  // Step 4: 生成回复（遵循四态边界）
   let reply = ""
   let verdict = ""
   
   if (intent.type === "今日") {
-    // 今日能量问题
     reply = jiaoZi[0]?.content || "今日能量平稳，顺势而为即可。"
     verdict = "保持节奏，不急不缓"
   } else if (intent.type === "关系") {
-    // 关系问题
     if (bazi?.dayMaster) {
       const matchType = getMatchAdvice(bazi.dayMaster)
       reply = `作为${bazi.dayMaster}命的人，${matchType}。关系不是找"好的"，是找"对的" —— 对你来说，"对"就是能让你的能量流动起来的人。`
@@ -108,7 +161,6 @@ function generateReply(
       reply = "关系的问题，先回到自己 —— 你是什么能量，需要什么能量来流动？"
     }
   } else if (intent.type === "事业") {
-    // 事业问题
     if (bazi?.yongShen) {
       reply = `从你的命局看，${bazi.yongShen.reason}。事业的方向，是找能让你${bazi.yongShen.yongShen?.[0] || "发挥"}的环境，而不是追热门。`
       verdict = `适合${bazi.yongShen.yongShen?.[0] || "发挥"}型事业`
@@ -116,11 +168,9 @@ function generateReply(
       reply = "事业的问题，先看自己的能量在哪 —— 什么让你有劲，什么让你消耗。"
     }
   } else if (intent.type === "命运") {
-    // 命运级大问题 → 哲学避问
     reply = "这个问题太大，我不硬答。但我可以告诉你：你现在的能量状态，以及它可能在往哪个方向走。看见当下，比定义命运更有用。"
     verdict = "回到当下"
   } else {
-    // 通用问题
     reply = jiaoZi[0]?.content || "我听到了。能具体一点吗？"
   }
   
@@ -139,32 +189,21 @@ function generateReply(
 function detectIntent(message: string): {type: string, confidence: number} {
   const lowerMsg = message.toLowerCase()
   
-  // 今日能量
   if (lowerMsg.includes("今天") || lowerMsg.includes("今日") || lowerMsg.includes("现在")) {
     return {type: "今日", confidence: 0.8}
   }
-  
-  // 关系
   if (lowerMsg.includes("关系") || lowerMsg.includes("感情") || lowerMsg.includes("恋爱") || lowerMsg.includes("匹配")) {
     return {type: "关系", confidence: 0.8}
   }
-  
-  // 事业
   if (lowerMsg.includes("事业") || lowerMsg.includes("工作") || lowerMsg.includes("职业") || lowerMsg.includes("创业")) {
     return {type: "事业", confidence: 0.8}
   }
-  
-  // 命运级大问题
   if (lowerMsg.includes("命运") || lowerMsg.includes("这辈子") || lowerMsg.includes("一生") || lowerMsg.includes("命好")) {
     return {type: "命运", confidence: 0.9}
   }
-  
   return {type: "通用", confidence: 0.5}
 }
 
-/**
- * 获取匹配建议
- */
 function getMatchAdvice(dayMaster: string): string {
   const advice: Record<string, string> = {
     "木": "你容易被有深度、有精神追求的人吸引",

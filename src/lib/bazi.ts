@@ -303,11 +303,12 @@ export function calculateWuxingStrength(bazi: BaziResult): {
 }
 
 /**
- * M4: 日主旺衰判断（7级）
- * 综合帮扶力 vs 克泄耗力
+ * M4: 日主旺衰判断（5档 · 工单-03 v1.1）
+ * 极旺 / 旺 / 中和 / 弱 / 极弱
+ * 原偏旺并入旺，偏弱并入弱
  */
 export function judgeStrength(bazi: BaziResult): {
-  level: "极旺" | "旺" | "偏旺" | "中和" | "偏弱" | "弱" | "极弱";
+  level: "极旺" | "旺" | "中和" | "弱" | "极弱";
   score: number;
   deLing: boolean;  // 得令
   deDi: boolean;    // 得地
@@ -354,13 +355,11 @@ export function judgeStrength(bazi: BaziResult): {
   const deZhu = wxStrength.wuxing[tongLei] > 1.5;
   
   // 判断等级
-  let level: "极旺" | "旺" | "偏旺" | "中和" | "偏弱" | "弱" | "极弱";
+  let level: "极旺" | "旺" | "中和" | "弱" | "极弱";
   if (ratio > 0.70) level = "极旺";
-  else if (ratio > 0.58) level = "旺";
-  else if (ratio > 0.52) level = "偏旺";
+  else if (ratio > 0.52) level = "旺";      // 含旧偏旺
   else if (ratio > 0.48) level = "中和";
-  else if (ratio > 0.42) level = "偏弱";
-  else if (ratio > 0.30) level = "弱";
+  else if (ratio > 0.30) level = "弱";       // 含旧偏弱
   else level = "极弱";
   
   return {level, score: Math.round(ratio * 100) / 100, deLing, deDi, deSheng, deZhu};
@@ -387,7 +386,7 @@ export function findYongShen(bazi: BaziResult): {
   const woSheng = cycle[(idx + 1) % 5];
   const woKe = cycle[(idx + 2) % 5];
   
-  if (strength.level === "极弱" || strength.level === "弱" || strength.level === "偏弱") {
+  if (strength.level === "极弱" || strength.level === "弱") {
     // 身弱：用印比
     return {
       yongShen: [shengWo, tongLei],
@@ -395,7 +394,7 @@ export function findYongShen(bazi: BaziResult): {
       jiShen: [keWo, woKe],
       reason: `日主${strength.level}，需${shengWo}生扶、${tongLei}帮身`
     };
-  } else if (strength.level === "极旺" || strength.level === "旺" || strength.level === "偏旺") {
+  } else if (strength.level === "极旺" || strength.level === "旺") {
     // 身旺：用克泄耗
     return {
       yongShen: [keWo, woSheng, woKe],
