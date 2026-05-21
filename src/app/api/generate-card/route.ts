@@ -2,6 +2,173 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { calculateBazi, baziToPrompt, getDayMasterWuxing, judgeStrength, findYongShen, calculateWuxingStrength } from '@/lib/bazi'
 
+// 基础神煞表（常用5种）
+const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => {position: string; description: string; warning?: string} | null}>> = {
+  '驿马': [{
+    name: '驿马',
+    check: (b) => {
+      const yimaZhi = ['寅', '申', '巳', '亥']
+      const positions = ['year', 'month', 'day', 'hour'] as const
+      for (const p of positions) {
+        if (b[p]?.zhi && yimaZhi.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '走动多，适合外地发展，行动力强', warning: '漂泊不定，静不下来' }
+      }
+      return null
+    }
+  }],
+  '桃花': [{
+    name: '桃花',
+    check: (b) => {
+      const taohuaMap: Record<string, string> = { '子': '酉', '午': '卯', '卯': '子', '酉': '午' }
+      const dayZhi = b.day?.zhi
+      if (!dayZhi || !taohuaMap[dayZhi]) return null
+      const target = taohuaMap[dayZhi]
+      const positions = ['year', 'month', 'day', 'hour'] as const
+      for (const p of positions) {
+        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '人缘好，异性缘佳，有魅力', warning: '易招烂桃花，注意感情边界' }
+      }
+      return null
+    }
+  }],
+  '天乙贵人': [{
+    name: '天乙贵人',
+    check: (b) => {
+      const guirenMap: Record<string, string[]> = {
+        '甲': ['丑', '未'], '乙': ['子', '申'], '丙': ['亥', '酉'],
+        '丁': ['亥', '酉'], '戊': ['丑', '未'], '己': ['子', '申'],
+        '庚': ['丑', '未'], '辛': ['子', '申'], '壬': ['卯', '巳'],
+        '癸': ['卯', '巳']
+      }
+      const targets = guirenMap[b.day?.gan] || []
+      const positions = ['year', 'month', 'day', 'hour'] as const
+      for (const p of positions) {
+        if (b[p]?.zhi && targets.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '遇贵人相助，逢凶化吉', warning: '' }
+      }
+      return null
+    }
+  }],
+  '华盖': [{
+    name: '华盖',
+    check: (b) => {
+      const huagaiMap: Record<string, string> = { '子': '辰', '丑': '丑', '寅': '戌', '卯': '未', '辰': '辰', '巳': '丑', '午': '戌', '未': '未', '申': '辰', '酉': '丑', '戌': '戌', '亥': '未' }
+      const dayZhi = b.day?.zhi
+      if (!dayZhi || !huagaiMap[dayZhi]) return null
+      const target = huagaiMap[dayZhi]
+      const positions = ['year', 'month', 'day', 'hour'] as const
+      for (const p of positions) {
+        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '聪慧好学，有艺术/宗教/哲学天赋', warning: '易孤僻，需注意社交' }
+      }
+      return null
+    }
+  }],
+  '文昌': [{
+    name: '文昌',
+    check: (b) => {
+      const wenchangMap: Record<string, string> = {
+        '甲': '巳', '乙': '午', '丙': '申', '丁': '酉',
+        '戊': '申', '己': '酉', '庚': '子', '辛': '丑',
+        '壬': '寅', '癸': '卯'
+      }
+      const target = wenchangMap[b.day?.gan]
+      if (!target) return null
+      const positions = ['year', 'month', 'day', 'hour'] as const
+      for (const p of positions) {
+        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '学业/文运佳，思维敏捷，表达能力强', warning: '' }
+      }
+      return null
+    }
+  }],
+}
+
+// 调候简表（10日主×12月令核心需求）
+function getTiaoHou(dayGan: string, monthZhi: string): { coreNeed: string[]; reason: string; avoid: string[] } {
+  // 简化版：只取月令地支判断季节
+  const seasonMap: Record<string, string> = {
+    '寅': '春', '卯': '春', '辰': '春',
+    '巳': '夏', '午': '夏', '未': '夏',
+    '申': '秋', '酉': '秋', '戌': '秋',
+    '亥': '冬', '子': '冬', '丑': '冬',
+  }
+  const season = seasonMap[monthZhi] || ''
+  
+  const tiaoHouRules: Record<string, Record<string, { coreNeed: string[]; reason: string; avoid: string[] }>> = {
+    '甲': {
+      '春': { coreNeed: ['丙', '癸'], reason: '甲木生于春季，木旺需火泄秀、水润泽', avoid: ['金过旺'] },
+      '夏': { coreNeed: ['癸', '壬'], reason: '甲木生于夏季，火旺木燥需水润', avoid: ['火过旺'] },
+      '秋': { coreNeed: ['丁', '壬'], reason: '甲木生于秋季，金克木需火制金、水生木', avoid: ['金过旺'] },
+      '冬': { coreNeed: ['丙', '丁'], reason: '甲木生于冬季，水寒木冻需火暖', avoid: ['水过旺'] },
+    },
+    '乙': {
+      '春': { coreNeed: ['丙', '癸'], reason: '乙木生于春季，需火发荣、水滋润', avoid: ['土重'] },
+      '夏': { coreNeed: ['癸', '壬'], reason: '乙木生于夏季，焦枯需水', avoid: ['火旺'] },
+      '秋': { coreNeed: ['丙', '丁'], reason: '乙木生于秋季，凋零需火暖', avoid: ['金多'] },
+      '冬': { coreNeed: ['丙', '丁'], reason: '乙木生于冬季，寒冷需火', avoid: ['水旺'] },
+    },
+    '丙': {
+      '春': { coreNeed: ['甲', '壬'], reason: '丙火生于春季，木虚火弱需木生、水济', avoid: ['土晦'] },
+      '夏': { coreNeed: ['壬', '癸'], reason: '丙火生于夏季，太烈需水制', avoid: ['火炎'] },
+      '秋': { coreNeed: ['甲', '木'], reason: '丙火生于秋季，退气需木扶', avoid: ['金多'] },
+      '冬': { coreNeed: ['甲', '木'], reason: '丙火生于冬季，衰微需木生', avoid: ['水克'] },
+    },
+    '丁': {
+      '春': { coreNeed: ['甲', '庚'], reason: '丁火生于春季，柔弱需木生、金劈', avoid: ['水多'] },
+      '夏': { coreNeed: ['甲', '庚'], reason: '丁火生于夏季，需木引火、金劈甲', avoid: ['火烈'] },
+      '秋': { coreNeed: ['甲', '木'], reason: '丁火生于秋季，退行需木助', avoid: ['土泄'] },
+      '冬': { coreNeed: ['甲', '木'], reason: '丁火生于冬季，熄灭需木生', avoid: ['水灭'] },
+    },
+    '戊': {
+      '春': { coreNeed: ['丙', '甲'], reason: '戊土生于春季，土虚需火暖、木疏', avoid: ['木克'] },
+      '夏': { coreNeed: ['壬', '癸'], reason: '戊土生于夏季，燥热需水润', avoid: ['火燥'] },
+      '秋': { coreNeed: ['丙', '丁'], reason: '戊土生于秋季，土寒需火暖', avoid: ['金多'] },
+      '冬': { coreNeed: ['丙', '甲'], reason: '戊土生于冬季，冰冻需火融', avoid: ['水寒'] },
+    },
+    '己': {
+      '春': { coreNeed: ['丙', '火'], reason: '己土生于春季，湿寒需火暖', avoid: ['木克'] },
+      '夏': { coreNeed: ['癸', '水'], reason: '己土生于夏季，燥热需水润', avoid: ['火烈'] },
+      '秋': { coreNeed: ['丙', '火'], reason: '己土生于秋季，虚薄需火补', avoid: ['金耗'] },
+      '冬': { coreNeed: ['丙', '火'], reason: '己土生于冬季，冰冷需火融', avoid: ['水寒'] },
+    },
+    '庚': {
+      '春': { coreNeed: ['丁', '甲'], reason: '庚金生于春季，木坚金缺需火炼、木琢', avoid: ['木坚'] },
+      '夏': { coreNeed: ['壬', '癸'], reason: '庚金生于夏季，火烈需水制', avoid: ['火烈'] },
+      '秋': { coreNeed: ['丁', '火'], reason: '庚金生于秋季，金坚需火炼成器', avoid: ['水浊'] },
+      '冬': { coreNeed: ['丁', '火'], reason: '庚金生于冬季，寒冷需火暖', avoid: ['水寒'] },
+    },
+    '辛': {
+      '春': { coreNeed: ['壬', '庚'], reason: '辛金生于春季，软弱需金帮、水洗', avoid: ['土厚'] },
+      '夏': { coreNeed: ['壬', '癸'], reason: '辛金生于夏季，熔化需水制', avoid: ['火烈'] },
+      '秋': { coreNeed: ['壬', '水'], reason: '辛金生于秋季，璀璨需水淘', avoid: ['土埋'] },
+      '冬': { coreNeed: ['丙', '火'], reason: '辛金生于冬季，冷冻需火暖', avoid: ['水寒'] },
+    },
+    '壬': {
+      '春': { coreNeed: ['庚', '辛'], reason: '壬水生于春季，泛滥需金生、土制', avoid: ['木泄'] },
+      '夏': { coreNeed: ['庚', '辛'], reason: '壬水生于夏季，蒸干需金生水源', avoid: ['火烈'] },
+      '秋': { coreNeed: ['甲', '木'], reason: '壬水生于秋季，源清需木泄秀', avoid: ['金多'] },
+      '冬': { coreNeed: ['丙', '丁'], reason: '壬水生于冬季，冰封需火暖', avoid: ['金寒'] },
+    },
+    '癸': {
+      '春': { coreNeed: ['丙', '辛'], reason: '癸水生于春季，散漫需火照、金生', avoid: ['木泄'] },
+      '夏': { coreNeed: ['庚', '辛'], reason: '癸水生于夏季，干涸需金生', avoid: ['土克'] },
+      '秋': { coreNeed: ['丙', '丁'], reason: '癸水生于秋季，清冷需火暖', avoid: ['金多'] },
+      '冬': { coreNeed: ['丙', '丁'], reason: '癸水生于冬季，结冰需火融', avoid: ['水寒'] },
+    },
+  }
+  
+  const rule = tiaoHouRules[dayGan]?.[season]
+  return rule || { coreNeed: [], reason: '', avoid: [] }
+}
+
+// 计算神煞
+function calcShenSha(bazi: any): Array<{name: string; position: string; description: string; warning?: string}> {
+  const result: Array<{name: string; position: string; description: string; warning?: string}> = []
+  for (const [, checks] of Object.entries(SHEN_SHA_TABLE)) {
+    for (const c of checks) {
+      const r = c.check(bazi)
+      if (r) result.push({ name: c.name, ...r })
+    }
+  }
+  return result
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -47,7 +214,6 @@ export async function POST(request: NextRequest) {
       social_tendency: getSocialTendency(wuxing),
       summary: `${bazi.dayGan}${wuxing}之人，${strength.level}，${yongShen.reason}。性格${generateKeywords(wuxing, strength.level).slice(0, 2).join('、')}，适合与${getMatchType(wuxing)}型人格相处。`,
       bazi_display: `${bazi.year.gan}${bazi.year.zhi} ${bazi.month.gan}${bazi.month.zhi} ${bazi.day.gan}${bazi.day.zhi} ${bazi.hour?.gan || '?'}${bazi.hour?.zhi || '?'}`,
-      // 新增命理规则层输出
       strength: {
         level: strength.level,
         score: strength.score,
@@ -57,7 +223,9 @@ export async function POST(request: NextRequest) {
         deZhu: strength.deZhu
       },
       yongShen: yongShen,
-      wuxingStrength: wxStrength.normalized
+      wuxingStrength: wxStrength.normalized,
+      shenSha: calcShenSha(bazi),
+      tiaoHou: getTiaoHou(bazi.dayGan, bazi.month.zhi)
     }
 
     return NextResponse.json({
