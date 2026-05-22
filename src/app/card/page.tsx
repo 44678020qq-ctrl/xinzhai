@@ -51,7 +51,17 @@ export default function CardPage() {
       const raw = sessionStorage.getItem("xinzhai_birth");
 
       if (raw) {
-        const form = JSON.parse(raw);
+        let form;
+        try {
+          form = JSON.parse(raw);
+        } catch (e) {
+          console.error("sessionStorage 数据格式错误，清除缓存:", e);
+          sessionStorage.removeItem("xinzhai_birth");
+          sessionStorage.removeItem("xinzhai_bazi");
+          router.push("/register");
+          setLoading(false);
+          return;
+        }
 
         // 优先尝试 Python 规则引擎
         try {
