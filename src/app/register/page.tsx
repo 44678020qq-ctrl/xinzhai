@@ -8,56 +8,8 @@ import { InkMark } from '@/components/InkMark'
 import { SolarTimeTrace } from '@/components/SolarTimeTrace'
 
 // 中国主要城市经纬度（真太阳时L2必须）
-const CITY_COORDS: Record<string, { longitude: number; latitude: number }> = {
-  '北京': { longitude: 116.4, latitude: 39.9 },
-  '上海': { longitude: 121.5, latitude: 31.2 },
-  '广州': { longitude: 113.3, latitude: 23.1 },
-  '深圳': { longitude: 114.1, latitude: 22.5 },
-  '成都': { longitude: 104.1, latitude: 30.6 },
-  '重庆': { longitude: 106.5, latitude: 29.5 },
-  '杭州': { longitude: 120.2, latitude: 30.3 },
-  '武汉': { longitude: 114.3, latitude: 30.6 },
-  '南京': { longitude: 118.8, latitude: 32.1 },
-  '西安': { longitude: 108.9, latitude: 34.3 },
-  '长沙': { longitude: 113.0, latitude: 28.2 },
-  '天津': { longitude: 117.2, latitude: 39.1 },
-  '苏州': { longitude: 120.6, latitude: 31.3 },
-  '郑州': { longitude: 113.7, latitude: 34.8 },
-  '青岛': { longitude: 120.4, latitude: 36.1 },
-  '大连': { longitude: 121.6, latitude: 38.9 },
-  '沈阳': { longitude: 123.4, latitude: 41.8 },
-  '哈尔滨': { longitude: 126.6, latitude: 45.8 },
-  '长春': { longitude: 125.3, latitude: 43.9 },
-  '昆明': { longitude: 102.7, latitude: 25.0 },
-  '贵阳': { longitude: 106.7, latitude: 26.6 },
-  '南宁': { longitude: 108.3, latitude: 22.8 },
-  '海口': { longitude: 110.3, latitude: 20.0 },
-  '三亚': { longitude: 109.5, latitude: 18.3 },
-  '福州': { longitude: 119.3, latitude: 26.1 },
-  '厦门': { longitude: 118.1, latitude: 24.5 },
-  '合肥': { longitude: 117.3, latitude: 31.8 },
-  '南昌': { longitude: 115.9, latitude: 28.7 },
-  '太原': { longitude: 112.5, latitude: 37.9 },
-  '石家庄': { longitude: 114.5, latitude: 38.0 },
-  '兰州': { longitude: 103.8, latitude: 36.1 },
-  '乌鲁木齐': { longitude: 87.6, latitude: 43.8 },
-  '拉萨': { longitude: 91.1, latitude: 29.7 },
-  '呼和浩特': { longitude: 111.7, latitude: 40.8 },
-  '银川': { longitude: 106.3, latitude: 38.5 },
-  '西宁': { longitude: 101.8, latitude: 36.6 },
-  '温州': { longitude: 120.7, latitude: 28.0 },
-  '宁波': { longitude: 121.5, latitude: 29.9 },
-  '无锡': { longitude: 120.3, latitude: 31.6 },
-  '佛山': { longitude: 113.1, latitude: 23.0 },
-  '东莞': { longitude: 113.7, latitude: 23.0 },
-  '烟台': { longitude: 121.4, latitude: 37.5 },
-  '泉州': { longitude: 118.6, latitude: 24.9 },
-}
-
-const CITY_LIST = Object.keys(CITY_COORDS)
-
 /**
- * 真太阳时修正：根据出生城市经纬度调整时辰
+ * 真太阳时修正：固定使用北京时间（东经120°）
  * 1. 均时差修正（Bretagnon公式，±16分钟）
  * 2. 经度修正（与东120°的差 × 4分钟/度）
  * 修正后可能跨越时辰边界 → 调整出生时辰
@@ -152,7 +104,7 @@ export default function RegisterPage() {
     birth_day: '',
     birth_hour: '',
     birth_minute: '',
-    birth_city: '',  // 出生城市（真太阳时必须）
+
     is_lunar: false
   })
 
@@ -171,8 +123,6 @@ export default function RegisterPage() {
       birth_day: formData.birth_day,
       birth_hour: formData.birth_hour,
       birth_minute: formData.birth_minute,
-      birth_city: formData.birth_city,
-      longitude: CITY_COORDS[formData.birth_city]?.longitude,
       gender: formData.gender,
       is_lunar: formData.is_lunar
     }
@@ -180,11 +130,9 @@ export default function RegisterPage() {
     const hour = formData.birth_hour ? parseInt(formData.birth_hour) : null
     const minute = formData.birth_minute ? parseInt(formData.birth_minute) : null
 
-    // 真太阳时修正：根据出生城市调整时辰
-    const longitude = formData.birth_city ? CITY_COORDS[formData.birth_city]?.longitude : undefined
     const solarAdjusted = hour ? adjustToSolarTime(
       parseInt(formData.birth_year), parseInt(formData.birth_month), parseInt(formData.birth_day),
-      hour, minute || 0, longitude
+      hour, minute || 0
     ) : null
     
     // 如果真太阳时修正跨越时辰边界，使用修正后的时辰
@@ -390,23 +338,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 出生城市（真太阳时必须） */}
-          <div>
-            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
-              出生城市（影响时辰精度）
-            </label>
-            <select
-              value={formData.birth_city}
-              onChange={(e) => setFormData({ ...formData, birth_city: e.target.value })}
-              className="w-full px-4 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 focus:outline-none focus:border-ink-400 font-light appearance-none"
-            >
-              <option value="">选择城市</option>
-              {CITY_LIST.map(city => (
-                <option key={city} value={city}>{city}{CITY_COORDS[city] && ` (东经${CITY_COORDS[city].longitude}°)`}</option>
-              ))}
-            </select>
-            <p className="text-[10px] text-ink-400 mt-1 font-light">经度决定真太阳时，新疆/西藏可能差2小时</p>
-          </div>
+
 
           {/* 农历开关 */}
           <label className="flex items-center gap-2 cursor-pointer">
@@ -432,8 +364,7 @@ export default function RegisterPage() {
               birthDay={parseInt(formData.birth_day)}
               birthHour={parseInt(formData.birth_hour)}
               birthMinute={parseInt(formData.birth_minute) || 0}
-              city={formData.birth_city || undefined}
-              longitude={formData.birth_city ? CITY_COORDS[formData.birth_city]?.longitude : undefined}
+
             />
           )}
 
