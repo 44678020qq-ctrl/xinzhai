@@ -76,7 +76,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = JSON.parse(stdout.trim())
+    let result;
+    try {
+      result = JSON.parse(stdout.trim());
+    } catch (parseError) {
+      console.error('Python output is not valid JSON:', stdout.slice(0, 500));
+      return NextResponse.json({
+        success: false,
+        error: 'Python 引擎输出格式错误',
+        fallback: true,
+      }, { status: 503 });
+    }
 
     return NextResponse.json({
       success: true,
