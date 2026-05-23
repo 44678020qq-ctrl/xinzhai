@@ -202,11 +202,6 @@ export default function CardPage() {
     <main className="min-h-screen flex flex-col items-center px-6 py-12 bg-bg">
       <div className="animate-fade-in-up w-full max-w-sm flex flex-col gap-6">
 
-        {/* 引擎标记 */}
-        {engine === "python" && (
-          <div className="self-end text-[9px] text-line">v1</div>
-        )}
-
         {/* 标题 */}
         <div className="text-center flex flex-col items-center gap-2">
           <InkMark />
@@ -299,16 +294,22 @@ export default function CardPage() {
             看看谁能和你共鸣 →
           </button>
           <button
-            onClick={() => router.push("/register")}
-            className="text-center text-xs text-line hover:text-sub transition-colors"
+            onClick={() => router.push("/flow")}
+            className="w-full py-2.5 rounded-2xl bg-card text-ink text-sm font-medium tracking-wide border border-line hover:border-accent/40 transition-colors"
           >
-            重新生成
+            看看流年运势
           </button>
           <button
             onClick={() => window.print()}
             className="w-full py-2.5 rounded-2xl bg-white text-accent text-sm font-medium tracking-wide border-2 border-accent hover:bg-accent-soft transition-colors"
           >
             晒命签
+          </button>
+          <button
+            onClick={() => router.push("/register")}
+            className="text-center text-xs text-line hover:text-sub transition-colors"
+          >
+            重新生成
           </button>
         </div>
       </div>

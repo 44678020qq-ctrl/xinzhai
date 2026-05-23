@@ -15,15 +15,12 @@ const ReferenceLine = dynamic(() => import("recharts").then((mod) => mod.Referen
 
 import { generateFlowData, type FlowData, type LifeEvent } from "@/lib/flow-data";
 import { calculateBazi } from "@/lib/bazi";
-import { checkTurnTide, markTurnTideTriggered, getTriggeredTurnKeys, type TurnTideResult } from "@/lib/turn-tide";
-import Navigation from "@/components/Navigation";
+import { InkMark } from "@/components/InkMark";
 
 export default function FlowPage() {
   const router = useRouter();
   const [flowData, setFlowData] = useState<FlowData | null>(null);
   const [selectedAge, setSelectedAge] = useState<number | null>(null);
-  const [turnTide, setTurnTide] = useState<TurnTideResult | null>(null);
-  const [showTurnTide, setShowTurnTide] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("xinzhai_birth") || sessionStorage.getItem("userData");
@@ -51,17 +48,6 @@ export default function FlowPage() {
 
       const data = generateFlowData(bazi, gender, birthYear);
       setFlowData(data);
-
-      // 转潮判断（工单-07）
-      const currentAge = new Date().getFullYear() - birthYear;
-      const currentMonth = new Date().getMonth() + 1;
-      const birthMonthParsed = parseInt(userData.birth_month) || 1;
-      const triggeredKeys = typeof window !== 'undefined' ? getTriggeredTurnKeys() : [];
-      const tt = checkTurnTide(currentAge, currentMonth, birthMonthParsed, data.daYunList, data.isStrong, triggeredKeys);
-      setTurnTide(tt);
-      if (tt.isTurning && !tt.hasTriggered) {
-        setShowTurnTide(true);
-      }
     } catch (e) {
       console.error("Failed to parse userData:", e);
       router.push("/register");
@@ -70,9 +56,9 @@ export default function FlowPage() {
 
   if (!flowData) {
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <div className="text-stone-400">加载中...</div>
-      </div>
+      <main className="min-h-screen flex items-center justify-center bg-bg page-in">
+        <div className="animate-pulse text-sub text-sm">加载中…</div>
+      </main>
     );
   }
 
@@ -90,134 +76,71 @@ export default function FlowPage() {
     reason: point.reason,
   }));
 
-  // 当前年龄标记
-  const currentAge = new Date().getFullYear() - parseInt(flowData.bazi[2] ? "0" : "0"); // 简化
-
-  // 转潮仪式弹窗
-  const handleTurnTideDismiss = () => {
-    if (turnTide?.daYun) {
-      const turnKey = `turn_${turnTide.daYun.gan}${turnTide.daYun.zhi}_${turnTide.daYun.startAge}`;
-      markTurnTideTriggered(turnKey);
-    }
-    setShowTurnTide(false);
-  };
+  const point = selectedAge ? flowData.chartPoints.find((p) => p.age === selectedAge) : null;
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-24">
-      {/* 转潮仪式弹窗 */}
-      {showTurnTide && turnTide?.isTurning && (
-        <div className="fixed inset-0 z-50 bg-stone-900/95 flex items-center justify-center">
-          <div className="text-center max-w-xs animate-fade-in-up">
-            {/* 墨色静 */}
-            <div className="mb-8">
-              <div className="w-12 h-12 mx-auto rounded-full bg-stone-800 border border-stone-600 flex items-center justify-center">
-                <span className="text-stone-300 text-lg">{turnTide.turnType === "进入喜运" ? "起" : "守"}</span>
-              </div>
-            </div>
-            
-            <h2 className="text-xl text-stone-200 tracking-widest font-light mb-3">
-              转潮
-            </h2>
-            <p className="text-sm text-stone-400 font-light mb-2">
-              {turnTide.previousDaYun?.gan}{turnTide.previousDaYun?.zhi}运 → {turnTide.daYun?.gan}{turnTide.daYun?.zhi}运
-            </p>
-            <p className={`text-sm font-light mb-8 ${
-              turnTide.turnType === "进入喜运" ? "text-emerald-400" : "text-rose-400"
-            }`}>
-              {turnTide.turnType === "进入喜运" ? "能量转向顺势——宜主动" : "能量转向守势——宜稳中求进"}
-            </p>
-            
-            {/* 转潮句占位 */}
-            {turnTide.turnSentence && (
-              <div className="bg-stone-800 rounded-xl p-4 mb-8">
-                <p className="text-stone-300 text-sm font-light italic leading-relaxed">
-                  {turnTide.turnSentence}
-                </p>
-              </div>
-            )}
-            
-            <button
-              onClick={handleTurnTideDismiss}
-              className="px-8 py-2.5 bg-stone-700 text-stone-200 text-sm tracking-wider font-light rounded-xl hover:bg-stone-600 transition-colors"
-            >
-              收下，回到运势图
-            </button>
-          </div>
+    <main className="min-h-screen flex flex-col items-center px-6 py-10 bg-bg">
+      {/* 标题 */}
+      <div className="w-full max-w-sm flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-2">
+          <InkMark />
+          <h2 className="text-xl font-semibold text-ink">流年运势</h2>
         </div>
-      )}
-      {/* 顶部 */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-stone-200">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-stone-800">流年运势</h1>
-          <div className="text-sm text-stone-500">
-            {flowData.dayMasterWuxing}日主·{flowData.strengthLevel}({flowData.isStrong ? "喜克泄耗" : "喜帮扶"}) · {flowData.bazi.join(" ")}
-          </div>
-        </div>
-      </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-6">
-        {/* 运势K线图 */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100 mb-6">
-          <h2 className="text-sm font-medium text-stone-600 mb-2">人生运势曲线</h2>
-          <p className="text-[11px] text-stone-400 mb-4">基于日主{flowData.dayMaster}与流年十神生克关系，每点=一年</p>
-          
-          <div className="h-64 relative">
+        {/* 运势图 */}
+        <section className="bg-card rounded-2xl p-5 shadow-sm border border-line/50">
+          <div className="h-52 relative">
             {typeof window !== "undefined" && (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={chartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  margin={{ top: 5, right: 5, left: -24, bottom: 0 }}
                   onClick={(e) => {
                     const payload = (e as { activePayload?: Array<{ payload: { age: number } }> })?.activePayload;
-                    if (payload?.[0]) {
-                      setSelectedAge(payload[0].payload.age);
-                    }
+                    if (payload?.[0]) setSelectedAge(payload[0].payload.age);
                   }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ECE7DF" />
                   <XAxis
                     dataKey="age"
-                    stroke="#a8a29e"
-                    fontSize={11}
+                    stroke="#9A958C"
+                    fontSize={10}
                     tickFormatter={(value) => (value % 10 === 0 ? `${value}岁` : "")}
                   />
                   <YAxis
                     domain={[30, 100]}
-                    stroke="#a8a29e"
-                    fontSize={11}
+                    stroke="#9A958C"
+                    fontSize={10}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "rgba(255,255,255,0.95)",
-                      border: "1px solid #e7e5e4",
-                      borderRadius: "8px",
+                      backgroundColor: "rgba(255,255,255,0.98)",
+                      border: "1px solid #ECE7DF",
+                      borderRadius: "10px",
                       fontSize: "12px",
                     }}
                     formatter={(value: unknown, name: unknown) => [String(value), name === "score" ? "运势" : String(name)]}
                     labelFormatter={(label) => {
-                      const point = chartData.find(d => d.age === label);
-                      return point ? `${point.age}岁 · ${point.year}年 · ${point.ganZhi}` : `${label}岁`;
+                      const pt = chartData.find(d => d.age === label);
+                      return pt ? `${pt.age}岁 · ${pt.year}年 · ${pt.ganZhi}` : `${label}岁`;
                     }}
                   />
-                  
-                  {/* 大运分界线 */}
                   {flowData.daYunList.slice(0, 6).map((dy) => (
                     <ReferenceLine
                       key={dy.startAge}
                       x={dy.startAge}
-                      stroke="#d6d3d1"
+                      stroke="#ECE7DF"
                       strokeDasharray="3 3"
-                      label={{ value: `${dy.gan}${dy.zhi}`, position: "top", fontSize: 9, fill: "#a8a29e" }}
+                      label={{ value: `${dy.gan}${dy.zhi}`, position: "top", fontSize: 9, fill: "#9A958C" }}
                     />
                   ))}
-                  
                   <Line
                     type="monotone"
                     dataKey="score"
-                    stroke="#92400e"
+                    stroke="#6FA292"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 4, fill: "#92400e" }}
+                    activeDot={{ r: 4, fill: "#6FA292" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -226,35 +149,29 @@ export default function FlowPage() {
         </section>
 
         {/* 大运周期 */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100 mb-6">
-          <h2 className="text-sm font-medium text-stone-600 mb-2">大运周期</h2>
-          <p className="text-[11px] text-stone-400 mb-4">阳男阴女顺排，每步10年</p>
+        <section className="bg-card rounded-2xl p-5 shadow-sm border border-line/50">
+          <h2 className="text-sm font-semibold text-ink mb-3">大运周期</h2>
           <div className="grid grid-cols-4 gap-2">
             {flowData.daYunList.slice(0, 8).map((dy, i) => {
               const avgScore = chartData
                 .filter((d) => d.age >= dy.startAge && d.age <= dy.endAge)
                 .reduce((sum, d) => sum + d.score, 0) / Math.max(1, chartData.filter((d) => d.age >= dy.startAge && d.age <= dy.endAge).length);
-              
+              const isGood = flowData.isStrong ? dy.energyMain === "克泄耗" : dy.energyMain === "帮扶";
+
               return (
                 <div
                   key={i}
                   className={`text-center p-2 rounded-xl cursor-pointer transition-all ${
                     selectedAge && selectedAge >= dy.startAge && selectedAge <= dy.endAge
-                      ? "bg-amber-50 border border-amber-200"
-                      : "bg-stone-50 hover:bg-stone-100"
+                      ? "bg-accent-soft border border-accent/30"
+                      : "bg-bg hover:bg-bg/80"
                   }`}
                   onClick={() => setSelectedAge(dy.startAge)}
                 >
-                  <div className="text-xs text-stone-500 mb-1">{dy.startAge}-{dy.endAge}岁</div>
-                  <div className="text-sm font-medium text-stone-800">
-                    {dy.gan}{dy.zhi}
-                  </div>
-                  <div className={`text-xs mt-1 ${
-                    (flowData.isStrong ? dy.energyMain === "克泄耗" : dy.energyMain === "帮扶")
-                      ? "text-emerald-600"
-                      : "text-rose-600"
-                  }`}>
-                    {(flowData.isStrong ? dy.energyMain === "克泄耗" : dy.energyMain === "帮扶") ? "喜运" : "忌运"} · {Math.round(avgScore)}分
+                  <div className="text-[10px] text-sub mb-1">{dy.startAge}-{dy.endAge}岁</div>
+                  <div className="text-sm font-medium text-ink">{dy.gan}{dy.zhi}</div>
+                  <div className={`text-[10px] mt-1 ${isGood ? "text-accent" : "text-fire"}`}>
+                    {isGood ? "喜运" : "忌运"} · {Math.round(avgScore)}分
                   </div>
                 </div>
               );
@@ -262,33 +179,26 @@ export default function FlowPage() {
           </div>
         </section>
 
-        {/* 人生节点（转潮 + 关键事件） */}
-        <section className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100 mb-6">
-          <h2 className="text-sm font-medium text-stone-600 mb-4">人生节点</h2>
-          <div className="space-y-3">
+        {/* 人生节点 */}
+        <section className="bg-card rounded-2xl p-5 shadow-sm border border-line/50">
+          <h2 className="text-sm font-semibold text-ink mb-3">人生节点</h2>
+          <div className="flex flex-col gap-2">
             {flowData.events.map((event, i) => (
               <div
                 key={i}
                 className={`flex items-start gap-3 p-3 rounded-xl transition-all cursor-pointer ${
-                  selectedAge === event.age
-                    ? "bg-amber-50 border border-amber-200"
-                    : "bg-stone-50 hover:bg-stone-100"
+                  selectedAge === event.age ? "bg-accent-soft border border-accent/30" : "bg-bg hover:bg-bg/80"
                 }`}
                 onClick={() => setSelectedAge(event.age)}
               >
-                {/* 类型图标 */}
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm ${
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs shrink-0 ${
                   event.type === "turn"
-                    ? event.energy === "喜" ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
-                    : event.type === "career"
-                    ? "bg-blue-100 text-blue-600"
-                    : event.type === "love"
-                    ? "bg-rose-100 text-rose-600"
-                    : event.type === "health"
-                    ? "bg-emerald-100 text-emerald-600"
-                    : event.type === "wealth"
-                    ? "bg-amber-100 text-amber-600"
-                    : "bg-slate-100 text-slate-600"
+                    ? event.energy === "喜" ? "bg-accent-soft text-accent" : "bg-fire/10 text-fire"
+                    : event.type === "career" ? "bg-water/10 text-water"
+                    : event.type === "love" ? "bg-fire/10 text-fire"
+                    : event.type === "health" ? "bg-accent-soft text-accent"
+                    : event.type === "wealth" ? "bg-earth/10 text-earth"
+                    : "bg-bg text-sub"
                 }`}>
                   {event.type === "turn" ? (event.energy === "喜" ? "起" : "守")
                     : event.type === "career" ? "事"
@@ -297,20 +207,15 @@ export default function FlowPage() {
                     : event.type === "wealth" ? "财"
                     : "家"}
                 </div>
-                
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-stone-800">{event.title}</span>
-                    <span className="text-xs text-stone-400">
-                      {event.age}岁 · {event.year}年
-                    </span>
+                    <span className="text-sm font-medium text-ink">{event.title}</span>
+                    <span className="text-xs text-sub">{event.age}岁 · {event.year}年</span>
                     {event.ganZhi && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded">
-                        {event.ganZhi}
-                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-earth/10 text-earth rounded-full">{event.ganZhi}</span>
                     )}
                   </div>
-                  <div className="text-xs text-stone-500">{event.description}</div>
+                  <div className="text-xs text-sub leading-relaxed">{event.description}</div>
                 </div>
               </div>
             ))}
@@ -318,62 +223,42 @@ export default function FlowPage() {
         </section>
 
         {/* 选中年份详情 */}
-        {selectedAge && (() => {
-          const point = flowData.chartPoints.find((p) => p.age === selectedAge);
-          if (!point) return null;
-          
-          return (
-            <section className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100 mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-medium text-stone-600">
-                  {selectedAge}岁 · {point.year}年 · {point.ganZhi}
-                </h2>
-                <button
-                  onClick={() => setSelectedAge(null)}
-                  className="text-xs text-stone-400 hover:text-stone-600"
-                >
-                  关闭
-                </button>
+        {point && (
+          <section className="bg-card rounded-2xl p-5 shadow-sm border border-line/50 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink">{selectedAge}岁 · {point.year}年 · {point.ganZhi}</h2>
+              <button onClick={() => setSelectedAge(null)} className="text-xs text-sub hover:text-ink transition-colors">关闭</button>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-accent">{point.score}</div>
+                <div className="text-[10px] text-sub">综合评分</div>
               </div>
-              
-              <div className="space-y-3">
-                {/* K线数据 */}
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-amber-700">{point.score}</div>
-                    <div className="text-xs text-stone-400">综合评分</div>
-                  </div>
-                  <div className="flex-1 grid grid-cols-2 gap-2 text-xs">
-                    <div className="text-stone-500">年初：<span className="text-stone-700">{point.open}</span></div>
-                    <div className="text-stone-500">年末：<span className="text-stone-700">{point.close}</span></div>
-                    <div className="text-stone-500">最高：<span className="text-emerald-600">{point.high}</span></div>
-                    <div className="text-stone-500">最低：<span className="text-rose-600">{point.low}</span></div>
-                  </div>
-                </div>
-                
-                {/* 解读 */}
-                <div className="bg-stone-50 rounded-xl p-3 text-sm text-stone-600 leading-relaxed">
-                  {point.reason}
-                </div>
-                
-                <div className="flex gap-2 text-xs">
-                  <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded">
-                    {point.ganZhi}年
-                  </span>
-                  <span className={`px-2 py-1 rounded ${
-                    (flowData.isStrong ? point.daYunEnergy === "克泄耗" : point.daYunEnergy === "帮扶")
-                      ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
-                  }`}>
-                    {point.daYun} ({(flowData.isStrong ? point.daYunEnergy === "克泄耗" : point.daYunEnergy === "帮扶") ? "喜运" : "忌运"})
-                  </span>
-                </div>
+              <div className="flex-1 grid grid-cols-2 gap-2 text-xs">
+                <div className="text-sub">年初：<span className="text-ink">{point.open}</span></div>
+                <div className="text-sub">年末：<span className="text-ink">{point.close}</span></div>
+                <div className="text-sub">最高：<span className="text-accent">{point.high}</span></div>
+                <div className="text-sub">最低：<span className="text-fire">{point.low}</span></div>
               </div>
-            </section>
-          );
-        })()}
-      </main>
+            </div>
+            <div className="text-xs text-sub leading-relaxed bg-bg rounded-xl p-3">{point.reason}</div>
+            <div className="flex gap-2 text-xs">
+              <span className="px-2 py-1 bg-earth/10 text-earth rounded-full">{point.ganZhi}年</span>
+              <span className={`px-2 py-1 rounded-full ${
+                (flowData.isStrong ? point.daYunEnergy === "克泄耗" : point.daYunEnergy === "帮扶")
+                  ? "bg-accent-soft text-accent" : "bg-fire/10 text-fire"
+              }`}>
+                {point.daYun}（{(flowData.isStrong ? point.daYunEnergy === "克泄耗" : point.daYunEnergy === "帮扶") ? "喜运" : "忌运"}）
+              </span>
+            </div>
+          </section>
+        )}
 
-      <Navigation />
-    </div>
+        {/* 返回入口 */}
+        <button onClick={() => router.push("/card")} className="text-center text-xs text-line hover:text-sub transition-colors pt-2">
+          ← 返回能量名片
+        </button>
+      </div>
+    </main>
   );
 }
