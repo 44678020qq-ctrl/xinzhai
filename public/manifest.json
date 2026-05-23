@@ -1,0 +1,18 @@
+{
+  "name": "心斋",
+  "short_name": "心斋",
+  "description": "基于八字人格的轻社交系统",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F6F3EE",
+  "theme_color": "#6FA292",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

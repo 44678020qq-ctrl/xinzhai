@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="108" fill="#F6F3EE"/>
+  <circle cx="256" cy="256" r="190" stroke="#6FA292" stroke-width="5" fill="none" opacity="0.2"/>
+  <circle cx="256" cy="256" r="110" stroke="#6FA292" stroke-width="8" fill="none" opacity="0.35"/>
+  <circle cx="256" cy="190" r="28" fill="#6FA292" opacity="0.12"/>
+  <circle cx="320" cy="296" r="20" fill="#6FA292" opacity="0.09"/>
+  <circle cx="192" cy="312" r="22" fill="#6FA292" opacity="0.1"/>
+  <circle cx="256" cy="256" r="44" fill="#6FA292" opacity="0.06"/>
+  <text x="256" y="272" text-anchor="middle" font-family="system-ui, sans-serif" font-size="72" font-weight="600" fill="#33312E" opacity="0.9">心斋</text>
+</svg>
