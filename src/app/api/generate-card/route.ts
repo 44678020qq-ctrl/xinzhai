@@ -10,7 +10,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const yimaZhi = ['寅', '申', '巳', '亥']
       const positions = ['year', 'month', 'day', 'hour'] as const
       for (const p of positions) {
-        if (b[p]?.zhi && yimaZhi.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '你的能量待不住一处——在路上、在变动里，它才流得开', warning: '变动多了会散，偶尔也需要锚' }
+        if (b[p]?.zhi && yimaZhi.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '待不住，总想动', warning: '' }
       }
       return null
     }
@@ -41,7 +41,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const targets = guirenMap[b.day?.gan] || []
       const positions = ['year', 'month', 'day', 'hour'] as const
       for (const p of positions) {
-        if (b[p]?.zhi && targets.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '你的盘里留了一处暗接的善缘：最紧的关头，常有人从旁边伸手', warning: '' }
+        if (b[p]?.zhi && targets.includes(b[p].zhi)) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '有时会遇到帮你的人，挺自然的', warning: '' }
       }
       return null
     }
@@ -55,7 +55,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = huagaiMap[dayZhi]
       const positions = ['year', 'month', 'day', 'hour'] as const
       for (const p of positions) {
-        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '你有一片朝内的天地——人多时你收着，独处时才真正亮起来', warning: '亮起来的地方，也容易关上门' }
+        if (b[p]?.zhi === target) return { position: p === 'year' ? '年柱' : p === 'month' ? '月柱' : p === 'day' ? '日柱' : '时柱', description: '喜欢独处，人多的时候反而有点收', warning: '' }
       }
       return null
     }
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       emotion_pattern: getEmotionPattern(wuxing, strength.level),
       relation_pattern: getRelationPattern(wuxing),
       social_tendency: getSocialTendency(wuxing),
-      summary: `${bazi.dayGan}${wuxing}之人，${strength.level}，${yongShen.reason}。性格${generateKeywords(wuxing, strength.level).slice(0, 2).join('、')}，适合与${getMatchType(wuxing)}型人格相处。`,
+      summary: generatePlainSummary(bazi.dayGan, wuxing, strength.level),
       bazi_display: `${bazi.year.gan}${bazi.year.zhi} ${bazi.month.gan}${bazi.month.zhi} ${bazi.day.gan}${bazi.day.zhi} ${bazi.hour?.gan || '?'}${bazi.hour?.zhi || '?'}`,
       strength: {
         level: strength.level,
@@ -316,4 +316,30 @@ function getMatchType(wuxing: string): string {
     '水': '金（坚定）或木（正直）'
   }
   return map[wuxing] || '相似五行'
+}
+
+/** 平实文案生成（无算命腔）*/
+function generatePlainSummary(dayGan: string, wuxing: string, strength: string): string {
+  // 平实的日主描述
+  const wxDesc: Record<string, string> = {
+    '木': '有生长的方向感',
+    '火': '容易被点燃、也容易点燃别人',
+    '土': '比较稳、能撑住事',
+    '金': '有标准、有边界',
+    '水': '敏感、能感受到别人感受不到的',
+  };
+  
+  // 平实的旺衰描述
+  let strengthDesc = '';
+  if (strength.includes('旺')) {
+    strengthDesc = '能量偏旺，自己能撑得住，但有时候有点硬';
+  } else if (strength.includes('弱')) {
+    strengthDesc = '能量偏弱，心思细、容易被环境带着走，得有点外力撑着才稳';
+  } else {
+    strengthDesc = '能量比较中和，不算太硬也不太软';
+  }
+  
+  const baseDesc = wxDesc[wuxing] || '有点特别';
+  
+  return `你是${dayGan}${wuxing}——${baseDesc}。${strengthDesc}。`;
 }

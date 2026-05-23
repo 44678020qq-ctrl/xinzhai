@@ -51,7 +51,7 @@ export default function WelcomePage() {
         </div>
 
         <p className="text-[10px] text-ink-300 mt-8 font-light">
-          基于八字命理的人格匹配系统
+          基于八字的人格匹配系统
         </p>
       </div>
     </main>

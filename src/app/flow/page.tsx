@@ -129,7 +129,7 @@ export default function FlowPage() {
             
             {/* 转潮句占位 */}
             {turnTide.turnSentence && (
-              <div className="bg-stone-800 rounded-lg p-4 mb-8">
+              <div className="bg-stone-800 rounded-xl p-4 mb-8">
                 <p className="text-stone-300 text-sm font-light italic leading-relaxed">
                   {turnTide.turnSentence}
                 </p>
@@ -138,7 +138,7 @@ export default function FlowPage() {
             
             <button
               onClick={handleTurnTideDismiss}
-              className="px-8 py-2.5 bg-stone-700 text-stone-200 text-sm tracking-wider font-light rounded-sm hover:bg-stone-600 transition-colors"
+              className="px-8 py-2.5 bg-stone-700 text-stone-200 text-sm tracking-wider font-light rounded-xl hover:bg-stone-600 transition-colors"
             >
               收下，回到运势图
             </button>
@@ -155,7 +155,7 @@ export default function FlowPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-6 py-6">
         {/* 运势K线图 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm border border-stone-100 mb-6">
           <h2 className="text-sm font-medium text-stone-600 mb-2">人生运势曲线</h2>
@@ -238,7 +238,7 @@ export default function FlowPage() {
               return (
                 <div
                   key={i}
-                  className={`text-center p-2 rounded-lg cursor-pointer transition-all ${
+                  className={`text-center p-2 rounded-xl cursor-pointer transition-all ${
                     selectedAge && selectedAge >= dy.startAge && selectedAge <= dy.endAge
                       ? "bg-amber-50 border border-amber-200"
                       : "bg-stone-50 hover:bg-stone-100"
@@ -269,7 +269,7 @@ export default function FlowPage() {
             {flowData.events.map((event, i) => (
               <div
                 key={i}
-                className={`flex items-start gap-3 p-3 rounded-lg transition-all cursor-pointer ${
+                className={`flex items-start gap-3 p-3 rounded-xl transition-all cursor-pointer ${
                   selectedAge === event.age
                     ? "bg-amber-50 border border-amber-200"
                     : "bg-stone-50 hover:bg-stone-100"
@@ -352,7 +352,7 @@ export default function FlowPage() {
                 </div>
                 
                 {/* 解读 */}
-                <div className="bg-stone-50 rounded-lg p-3 text-sm text-stone-600 leading-relaxed">
+                <div className="bg-stone-50 rounded-xl p-3 text-sm text-stone-600 leading-relaxed">
                   {point.reason}
                 </div>
                 

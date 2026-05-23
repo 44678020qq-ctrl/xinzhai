@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { InkMark } from "@/components/InkMark";
 
+/** 角色类型 */
+type RoleType = "玩伴" | "恋人" | "老板" | "合伙人";
+
 interface MockProfile {
   id: string;
   wuxing_personality: string;
@@ -15,49 +18,94 @@ interface MockProfile {
   shishen: string;
 }
 
-function calcCompatibility(myWx: string, theirWx: string): number {
+/** 不同角色的匹配算法 */
+function calcCompatibilityByRole(
+  myWx: string, myYongshen: string, theirWx: string,
+  theirGan: string, myGuiren: string[], role: RoleType
+): number {
   const shengMap: Record<string, string> = { "木": "火", "火": "土", "土": "金", "金": "水", "水": "木" };
   const keMap: Record<string, string> = { "木": "土", "火": "金", "土": "水", "金": "木", "水": "火" };
-  if (shengMap[theirWx] === myWx) return 88 + Math.floor(Math.random() * 8);
-  if (shengMap[myWx] === theirWx) return 78 + Math.floor(Math.random() * 8);
-  if (myWx === theirWx) return 68 + Math.floor(Math.random() * 10);
-  if (keMap[theirWx] === myWx) return 58 + Math.floor(Math.random() * 10);
-  if (keMap[myWx] === theirWx) return 50 + Math.floor(Math.random() * 10);
-  return 65 + Math.floor(Math.random() * 15);
+  const tianGanHe: Record<string, string> = { "甲": "己", "己": "甲", "乙": "庚", "庚": "乙", "丙": "辛", "辛": "丙", "丁": "壬", "壬": "丁", "戊": "癸", "癸": "戊" };
+  const hasTianGanHe = tianGanHe[theirGan] === myYongshen?.charAt(0) || false;
+  const buXiYong = theirWx === myYongshen;
+  const shengXiYong = shengMap[theirWx] === myYongshen;
+  const isGuiren = myGuiren.includes(theirGan);
+  const tongPin = myWx === theirWx;
+  const hasChongKe = keMap[theirWx] === myWx || keMap[myWx] === theirWx;
+  let baseScore = 60;
+  switch (role) {
+    case "恋人":
+      if (buXiYong) baseScore += 25;
+      else if (shengXiYong) baseScore += 18;
+      if (hasTianGanHe) baseScore += 12;
+      if (tongPin) baseScore += 8;
+      if (hasChongKe) baseScore -= 10;
+      break;
+    case "老板":
+      if (isGuiren) baseScore += 30;
+      else if (shengMap[theirWx] === myWx) baseScore += 20;
+      else if (buXiYong) baseScore += 15;
+      if (hasChongKe) baseScore -= 5;
+      break;
+    case "合伙人":
+      if (buXiYong) baseScore += 28;
+      else if (shengXiYong) baseScore += 15;
+      if (tongPin) baseScore -= 5;
+      break;
+    case "玩伴":
+      if (tongPin) baseScore += 22;
+      else if (shengMap[theirWx] === myWx || shengMap[myWx] === theirWx) baseScore += 12;
+      if (hasChongKe) baseScore -= 15;
+      break;
+  }
+  return Math.min(99, Math.max(40, baseScore + Math.floor(Math.random() * 8)));
 }
 
-function getCompatibilityReason(myWx: string, theirWx: string, label: string): string {
+/** 平实的契合理由 */
+function getPlainReason(
+  myWx: string, myYongshen: string, theirWx: string,
+  theirGan: string, myGuiren: string[], role: RoleType
+): string {
   const shengMap: Record<string, string> = { "木": "火", "火": "土", "土": "金", "金": "水", "水": "木" };
-  if (shengMap[theirWx] === myWx) return `对方${label}生你的${myWx}，天然滋养，你会感到被理解和接纳。`;
-  if (shengMap[myWx] === theirWx) return `你的${myWx}生对方${label}，你在关系中自然付出，形成能量流动。`;
-  if (myWx === theirWx) return `同类${myWx}，你们有相似的能量底色，容易产生共鸣。`;
-  return `${label}与你的${myWx}形成张力关系，吸引力强烈但需注意磨合。`;
-}
-
-function getRelationType(myWx: string, theirWx: string): string {
-  const shengMap: Record<string, string> = { "木": "火", "火": "土", "土": "金", "金": "水", "水": "木" };
-  if (shengMap[theirWx] === myWx) return "贵人";
-  if (shengMap[myWx] === theirWx) return "恩人";
-  if (myWx === theirWx) return "知己";
-  return "砺友";
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 85) return "text-emerald-600 bg-emerald-50 border-emerald-200";
-  if (score >= 70) return "text-blue-600 bg-blue-50 border-blue-200";
-  if (score >= 60) return "text-amber-600 bg-amber-50 border-amber-200";
-  return "text-rose-600 bg-rose-50 border-rose-200";
+  const buXiYong = theirWx === myYongshen;
+  const shengXiYong = shengMap[theirWx] === myYongshen;
+  const isGuiren = myGuiren.includes(theirGan);
+  const tongPin = myWx === theirWx;
+  switch (role) {
+    case "恋人":
+      if (buXiYong) return `TA 是${theirWx}，正好补你缺的那块。跟这种人一起，你会松一点。`;
+      if (shengXiYong) return `TA 的能量能滋养你，跟 TA 在一起，你会觉得被理解。`;
+      if (tongPin) return `你们能量底色很像，容易聊到一块。`;
+      return `TA 的能量和你有些张力，吸引力强，但得磨合。`;
+    case "老板":
+      if (isGuiren) return `TA 是你的贵人类型。在你上面能托得住你。`;
+      if (shengMap[theirWx] === myWx) return `TA 的能量能撑着你，适合在你上面。`;
+      if (buXiYong) return `TA 有你缺的那块能量，跟着 TA 能学到东西。`;
+      return `能量关系一般，主要看实际能力和资源。`;
+    case "合伙人":
+      if (buXiYong) return `TA 恰好补你短板，能力互补，适合一起干事。`;
+      if (shengXiYong) return `TA 能提供你需要的资源，合作会有正向流动。`;
+      return `能量搭配还行，合作要靠业务互补。`;
+    case "玩伴":
+      if (tongPin) return `你们频率挺像的，玩到一块不费劲。`;
+      if (shengMap[theirWx] === myWx) return `TA 让你觉得舒服，没什么压力。`;
+      if (shengMap[myWx] === theirWx) return `你让 TA 舒服，相处轻松。`;
+      return `有点冲，但架不住玩得来。`;
+  }
 }
 
 function getWuxingColor(wx: string): string {
   const map: Record<string, string> = {
-    "木": "text-emerald-700 bg-emerald-50",
-    "火": "text-rose-700 bg-rose-50",
-    "土": "text-amber-700 bg-amber-50",
-    "金": "text-slate-700 bg-slate-50",
-    "水": "text-blue-700 bg-blue-50",
+    "木": "#9CB89A", "火": "#D88A7A", "土": "#C9A86A", "金": "#B9AE92", "水": "#7AA0C4",
   };
-  return map[wx] || "text-ink-700 bg-ink-50";
+  return map[wx] || "#94a3b8";
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 85) return "text-emerald-600 bg-emerald-50";
+  if (score >= 70) return "text-blue-600 bg-blue-50";
+  if (score >= 60) return "text-amber-600 bg-amber-50";
+  return "text-rose-600 bg-rose-50";
 }
 
 function generateMockPool(): MockProfile[] {
@@ -76,31 +124,28 @@ function generateMockPool(): MockProfile[] {
 }
 
 interface MatchResult {
-  id: string;
-  wuxing_personality: string;
-  dayMaster: string;
-  ganZhi: string;
-  summary: string;
-  keywords: string[];
-  bazi_display: string;
-  shishen: string;
-  compatibility: number;
-  reason: string;
-  relationType: string;
+  id: string; wuxing_personality: string; dayMaster: string; ganZhi: string;
+  summary: string; keywords: string[]; bazi_display: string; shishen: string;
+  compatibility: number; reason: string;
 }
+
+const ROLES: RoleType[] = ["玩伴", "恋人", "老板", "合伙人"];
 
 export default function MatchPage() {
   const router = useRouter();
+  const [selectedRole, setSelectedRole] = useState<RoleType>("玩伴");
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [sent, setSent] = useState<string[]>([]);
   const [myWx, setMyWx] = useState<string | null>(null);
   const [myGan, setMyGan] = useState<string | null>(null);
+  const [myYongshen, setMyYongshen] = useState<string>("木");
+  const [myGuiren, setMyGuiren] = useState<string[]>([]);
+  const [pool, setPool] = useState<MockProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("xinzhai_birth");
     if (!raw) { router.push("/register"); return; }
-
     import("@/lib/bazi").then(async (mod) => {
       const form = JSON.parse(raw);
       const bazi = mod.calculateBazi(
@@ -112,48 +157,51 @@ export default function MatchPage() {
       const wx = mod.getDayMasterWuxing(bazi);
       setMyWx(wx);
       setMyGan(bazi.dayGan);
-
-      let pool: MockProfile[];
+      const shengMap: Record<string, string> = { "木": "火", "火": "土", "土": "金", "金": "水", "水": "木" };
+      setMyYongshen(shengMap[wx]);
+      setMyGuiren([Object.entries(shengMap).find(([, v]) => v === wx)?.[0] || wx, shengMap[wx]]);
+      let userPool: MockProfile[];
       try {
         const { supabase } = await import("@/lib/supabase");
-        const { data: realUsers } = await supabase.from('user_profiles').select('*').neq('day_master_wuxing', null).limit(20);
-        if (realUsers && realUsers.length > 1) {
-          const { data: { user } } = await supabase.auth.getUser();
-          pool = realUsers.filter(u => u.id !== user?.id).map(u => ({
-            id: u.id,
-            wuxing_personality: `${u.bazi_day_gan || '?'}${u.day_master_wuxing || '?'}`,
-            dayMaster: u.day_master_wuxing || '未知',
-            ganZhi: u.bazi_day_gan || '?',
-            summary: u.personality_tags?.join('、') || `${u.name || '匿名'}的命局`,
-            keywords: (u.personality_tags as string[]) || [u.day_master_wuxing || '未知'],
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: realUsers, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .not('day_master_wuxing', 'is', null)
+          .neq('id', user?.id || '')
+          .limit(50);
+        if (error || !realUsers || realUsers.length === 0) {
+          userPool = generateMockPool();
+        } else {
+          userPool = realUsers.map(u => ({
+            id: u.id, wuxing_personality: `${u.bazi_day_gan || '?'}${u.day_master_wuxing || '?'}`,
+            dayMaster: u.day_master_wuxing || '未知', ganZhi: u.bazi_day_gan || '?',
+            summary: u.personality_tags?.join('、') || `在这里等你`,
+            keywords: (u.personality_tags as string[]) || [u.day_master_wuxing || '神秘'],
             bazi_display: `${u.bazi_year_gan || '?'}${u.bazi_year_zhi || '?'} ${u.bazi_month_gan || '?'}${u.bazi_month_zhi || '?'} ${u.bazi_day_gan || '?'}${u.bazi_day_zhi || '?'}`,
             shishen: '',
           }));
-        } else {
-          pool = generateMockPool();
         }
       } catch {
-        pool = generateMockPool();
+        userPool = generateMockPool();
       }
-
-      const results: MatchResult[] = pool.map(p => ({
-        id: p.id,
-        wuxing_personality: p.wuxing_personality,
-        dayMaster: p.dayMaster,
-        ganZhi: p.ganZhi,
-        summary: p.summary,
-        keywords: p.keywords,
-        bazi_display: p.bazi_display,
-        shishen: p.shishen,
-        compatibility: calcCompatibility(wx, p.dayMaster),
-        reason: getCompatibilityReason(wx, p.dayMaster, p.wuxing_personality),
-        relationType: getRelationType(wx, p.dayMaster),
-      }));
-      results.sort((a, b) => b.compatibility - a.compatibility);
-      setMatches(results);
+      setPool(userPool);
       setLoading(false);
     });
   }, [router]);
+
+  useEffect(() => {
+    if (!myWx || pool.length === 0) return;
+    const results: MatchResult[] = pool.map(p => ({
+      id: p.id, wuxing_personality: p.wuxing_personality, dayMaster: p.dayMaster,
+      ganZhi: p.ganZhi, summary: p.summary, keywords: p.keywords,
+      bazi_display: p.bazi_display, shishen: p.shishen,
+      compatibility: calcCompatibilityByRole(myWx, myYongshen, p.dayMaster, p.ganZhi, myGuiren, selectedRole),
+      reason: getPlainReason(myWx, myYongshen, p.dayMaster, p.ganZhi, myGuiren, selectedRole),
+    }));
+    results.sort((a, b) => b.compatibility - a.compatibility);
+    setMatches(results);
+  }, [selectedRole, myWx, myYongshen, myGuiren, pool]);
 
   const handleSendResonance = (match: MatchResult) => {
     setSent(prev => [...prev, match.id]);
@@ -165,84 +213,99 @@ export default function MatchPage() {
 
   if (loading || !myWx) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-ink-400 text-sm tracking-wider font-light">正在匹配…</div>
+      <main className="min-h-screen flex items-center justify-center bg-bg page-in">
+        <div className="animate-pulse text-sub text-sm">匹配中…</div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-6 py-12">
-      <div className="animate-fade-in-up w-full max-w-sm flex flex-col gap-8">
+    <main className="min-h-screen flex flex-col items-center px-6 py-12 bg-bg">
+      <div className="animate-fade-in-up w-full max-w-sm flex flex-col gap-6">
         {/* 标题 */}
         <div className="text-center flex flex-col items-center gap-2">
           <InkMark />
-          <h2 className="text-base tracking-[0.2em] text-ink-800 font-light">遇合</h2>
-          <div className="w-8 h-[0.5px] bg-ink-300" />
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-[10px] text-ink-400 font-light">你的日主</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-light ${getWuxingColor(myWx)}`}>
+          <h2 className="text-xl font-semibold text-ink">遇合</h2>
+          <p className="text-xs text-sub">选择角色，看看谁比较合</p>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-sub">你的类型</span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: getWuxingColor(myWx) + '20', color: getWuxingColor(myWx) }}>
               {myGan}{myWx}
             </span>
           </div>
         </div>
 
-        {/* 匹配列表 */}
-        <div className="flex flex-col gap-4">
-          {matches.map((match, index) => (
-            <div key={match.id} className="border border-ink-100 rounded-sm p-4 flex flex-col gap-3 relative bg-white/50">
-              {index < 3 && (
-                <div className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-ink-800 text-paper text-[9px] flex items-center justify-center font-light">
-                  {index + 1}
-                </div>
-              )}
-
-              {/* 头部 */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-ink-800 tracking-wider font-light">{match.wuxing_personality}</span>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-light ${getWuxingColor(match.dayMaster)}`}>{match.dayMaster}</span>
-                  {match.shishen && <span className="text-[9px] text-ink-300 font-light">{match.shishen}</span>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] text-ink-400 font-light">{match.relationType}</span>
-                  <div className={`text-[11px] px-2 py-0.5 rounded-full font-light border ${getScoreColor(match.compatibility)}`}>
-                    {match.compatibility}%
-                  </div>
-                </div>
-              </div>
-
-              {/* 八字 */}
-              <p className="text-[10px] text-ink-400 tracking-wider font-light font-mono">{match.bazi_display}</p>
-
-              {/* 摘要 */}
-              <p className="text-xs text-ink-600 leading-relaxed font-light">{match.summary}</p>
-
-              {/* 标签 */}
-              <div className="flex flex-wrap gap-1.5">
-                {match.keywords.map(kw => (
-                  <span key={kw} className="text-[10px] text-ink-500 bg-ink-50 px-2 py-0.5 rounded-full font-light">{kw}</span>
-                ))}
-              </div>
-
-              {/* 匹配理由 */}
-              <div className="text-[11px] text-ink-500 bg-ink-50/50 p-3 rounded-sm leading-relaxed font-light border-l-2 border-ink-200">
-                {match.reason}
-              </div>
-
-              <button
-                onClick={() => handleSendResonance(match)}
-                disabled={sent.includes(match.id)}
-                className="mt-1 py-2.5 border border-ink-200 text-ink-600 text-xs tracking-widest hover:bg-ink-50 transition-colors duration-500 font-light disabled:opacity-30 rounded-sm"
-              >
-                {sent.includes(match.id) ? "已发送" : "发送共鸣卡 →"}
-              </button>
-            </div>
+        {/* 角色选择器 - 轻感 pill 风格 */}
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {ROLES.map(role => (
+            <button
+              key={role}
+              onClick={() => setSelectedRole(role)}
+              className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 ${
+                selectedRole === role
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'bg-card border border-line text-sub hover:border-accent hover:text-accent'
+              }`}
+            >
+              {role}
+            </button>
           ))}
         </div>
 
-        <button onClick={() => router.push("/card")} className="text-[10px] text-ink-300 hover:text-ink-500 transition-colors font-light text-center pb-16">
-          ← 返回命签
+        {/* 匹配列表 - 白色卡片风格 */}
+        <div className="flex flex-col gap-3">
+          {matches.length === 0 ? (
+            <div className="text-center py-10 text-sub text-sm">这个角色暂时还没遇到合适的，过两天再来看看</div>
+          ) : (
+            matches.slice(0, 5).map((match, index) => (
+              <div key={match.id} className="hover-float bg-card rounded-2xl shadow-sm border border-line/50 p-4 flex flex-col gap-3 relative">
+                {index < 3 && (
+                  <div className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-accent text-white text-[9px] flex items-center justify-center font-bold shadow-sm">
+                    {index + 1}
+                  </div>
+                )}
+                {/* 头部：人格 + 分数 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: getWuxingColor(match.dayMaster) }}>
+                      {match.wuxing_personality?.[0]}
+                    </div>
+                    <div>
+                      <span className="text-sm font-semibold text-ink">{match.wuxing_personality}</span>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getWuxingColor(match.dayMaster) }} />
+                        <span className="text-[9px] text-sub">{match.dayMaster}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`text-xs px-2 py-0.5 rounded-full font-bold ${getScoreColor(match.compatibility)}`}>
+                    {match.compatibility}分
+                  </div>
+                </div>
+                {/* 契合理由 */}
+                <p className="text-xs text-sub leading-relaxed bg-bg/60 rounded-xl p-3">
+                  {match.reason}
+                </p>
+                {/* 标签 */}
+                <div className="flex flex-wrap gap-1">
+                  {match.keywords.slice(0, 3).map(kw => (
+                    <span key={kw} className="text-[10px] px-2 py-0.5 rounded-full bg-accent-soft text-accent">{kw}</span>
+                  ))}
+                </div>
+                {/* 发送共鸣 */}
+                <button
+                  onClick={() => handleSendResonance(match)}
+                  disabled={sent.includes(match.id)}
+                  className="w-full py-2.5 rounded-xl text-xs font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-accent text-white hover:bg-[#5A8D7A] shadow-sm"
+                >
+                  {sent.includes(match.id) ? '已发送共鸣' : '发送共鸣 →'}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        <button onClick={() => router.push("/card")} className="text-center text-xs text-line hover:text-sub transition-colors pt-2">
+          ← 返回能量名片
         </button>
       </div>
     </main>

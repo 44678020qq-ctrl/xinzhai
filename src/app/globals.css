@@ -1,41 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink-50: #fafaf9;
-  --color-ink-100: #f5f5f4;
-  --color-ink-200: #e7e5e4;
-  --color-ink-300: #d6d3d1;
-  --color-ink-400: #a8a29e;
-  --color-ink-500: #78716c;
-  --color-ink-600: #57534e;
-  --color-ink-700: #44403c;
-  --color-ink-800: #292524;
-  --color-ink-900: #1c1917;
-  --color-ink-950: #0c0a09;
-  --color-paper: #fefef9;
-  --color-accent: #92400e;
-  --color-wood: #4ade80;
-  --color-fire: #fb923c;
-  --color-earth: #fbbf24;
-  --color-metal: #94a3b8;
-  --color-water: #60a5fa;
+  /* 心斋 v2.0 轻交友色系 */
+  --color-bg: #F6F3EE;
+  --color-card: #FFFFFF;
+  --color-ink: #33312E;
+  --color-sub: #9A958C;
+  --color-line: #ECE7DF;
+  --color-accent: #6FA292;
+  --color-accent-soft: #E6F0EC;
+  --color-paper: #FEFEF9;
+  --color-water: #7AA0C4;
+  --color-fire: #D88A7A;
+  --color-earth: #C9A86A;
+  --color-metal: #B9AE92;
+  --color-wood: #9CB89A;
 }
 
 @layer base {
   body {
-    @apply bg-paper text-ink-900 antialiased;
-    font-family: "Noto Serif SC", "STSong", "Georgia", serif;
+    @apply bg-bg text-ink antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
   }
 
-  /* 墨色留白风格滚动条 */
+  /* 轻感滚动条 */
   ::-webkit-scrollbar {
     width: 4px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-paper;
+    @apply bg-bg;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-ink-300 rounded-full;
+    @apply bg-sub rounded-full;
   }
 }
 
@@ -50,44 +46,116 @@
   height: env(safe-area-inset-bottom, 0px);
 }
 
-/* 墨水晕染动画 */
-@keyframes inkSpread {
-  0% {
-    opacity: 0;
-    letter-spacing: 0.5em;
-    filter: blur(4px);
-  }
-  100% {
-    opacity: 1;
-    letter-spacing: 0.1em;
-    filter: blur(0);
-  }
-}
+/* ========== 微交互 ========== */
 
+/* 淡入动画 */
 @keyframes fadeInUp {
   0% {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(12px);
   }
   100% {
     opacity: 1;
     transform: translateY(0);
   }
 }
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out both;
+}
 
-@keyframes brushStroke {
+/* 按钮点击水波反馈 */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* 卡片 hover 微浮 */
+.hover-float {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-float:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(111, 162, 146, 0.15);
+}
+
+/* 聊天气泡出现动画 */
+@keyframes msgIn {
   0% {
-    stroke-dashoffset: 1000;
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
   }
   100% {
-    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
-
-.animate-ink-spread {
-  animation: inkSpread 1.2s ease-out forwards;
+.msg-in {
+  animation: msgIn 0.3s ease-out both;
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.8s ease-out forwards;
+/* 页面切换淡入 */
+@view-transition {
+  navigation: auto;
+}
+@keyframes pageIn {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+.page-in {
+  animation: pageIn 0.35s ease-out both;
+}
+
+/* ========== 打印样式：晒命签 ========== */
+
+@media print {
+  /* 隐藏底部导航 */
+  nav,
+  [class*="Navigation"] {
+    display: none !important;
+  }
+
+  /* 隐藏所有按钮 */
+  button {
+    display: none !important;
+  }
+
+  /* 隐藏「重新生成」文字链 */
+  a[href="/register"] {
+    display: none !important;
+  }
+
+  /* 让 main 占满打印页 */
+  main {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    min-height: 100vh !important;
+    padding: 24px !important;
+    background: #fff !important;
+  }
+
+  /* 能量名片卡片：白底 + 五行色左边框 + 无阴影 */
+  .max-w-\[370px\] {
+    box-shadow: none !important;
+    border-left: 4px solid var(--color-accent) !important;
+    max-width: 370px !important;
+    margin: 0 auto !important;
+  }
+
+  /* 确保文字颜色在打印时清晰 */
+  .text-ink { color: #33312E !important; }
+  .text-sub { color: #9A958C !important; }
+
+  /* 去掉动画 */
+  .animate-fade-in-up,
+  .animate-pulse {
+    animation: none !important;
+    opacity: 1 !important;
+  }
 }

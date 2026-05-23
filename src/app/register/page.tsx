@@ -7,34 +7,20 @@ import { calculateBazi, judgeStrength, findYongShen } from '@/lib/bazi'
 import { InkMark } from '@/components/InkMark'
 import { SolarTimeTrace } from '@/components/SolarTimeTrace'
 
-// 中国主要城市经纬度（真太阳时L2必须）
-/**
- * 真太阳时修正：固定使用北京时间（东经120°）
- * 1. 均时差修正（Bretagnon公式，±16分钟）
- * 2. 经度修正（与东120°的差 × 4分钟/度）
- * 修正后可能跨越时辰边界 → 调整出生时辰
- */
+// 真太阳时修正
 function adjustToSolarTime(
   birthYear: number, birthMonth: number, birthDay: number,
   birthHour: number, birthMinute: number,
   longitude?: number,
 ): { adjustedHour: number; adjustedMinute: number; shichenChanged: boolean; originalShichen: string; adjustedShichen: string } {
-  // 均时差
   const dayOfYear = getDayOfYear(birthYear, birthMonth, birthDay);
   const theta = (2 * Math.PI * dayOfYear) / 365;
   const eot = 9.87 * Math.sin(2 * theta) - 7.53 * Math.cos(theta) - 1.5 * Math.sin(theta);
-  
-  // 经度修正
   let longitudeCorrection = 0;
-  if (longitude) {
-    longitudeCorrection = (longitude - 120) * 4; // 分钟
-  }
-  
-  // 综合修正
-  const totalCorrection = eot + longitudeCorrection; // 分钟
+  if (longitude) longitudeCorrection = (longitude - 120) * 4;
+  const totalCorrection = eot + longitudeCorrection;
   let adjustedMinute = birthMinute + totalCorrection;
   let adjustedHour = birthHour;
-  
   if (adjustedMinute >= 60) {
     adjustedHour += Math.floor(adjustedMinute / 60);
     adjustedMinute = adjustedMinute % 60;
@@ -42,10 +28,8 @@ function adjustToSolarTime(
     adjustedHour += Math.floor(adjustedMinute / 60) - 1;
     adjustedMinute = (adjustedMinute % 60 + 60) % 60;
   }
-  
   const originalShichen = getShichenName(birthHour);
   const adjustedShichen = getShichenName(adjustedHour);
-  
   return {
     adjustedHour, adjustedMinute: Math.round(adjustedMinute),
     shichenChanged: originalShichen !== adjustedShichen,
@@ -57,7 +41,7 @@ function getDayOfYear(year: number, month: number, day: number): number {
   const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
   const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   let dayOfYear = day;
-  for (let i = 0; i < month - 1; i++) { dayOfYear += daysInMonth[i]; }
+  for (let i = 0; i < month - 1; i++) dayOfYear += daysInMonth[i];
   return dayOfYear;
 }
 
@@ -104,7 +88,6 @@ export default function RegisterPage() {
     birth_day: '',
     birth_hour: '',
     birth_minute: '',
-
     is_lunar: false
   })
 
@@ -134,11 +117,10 @@ export default function RegisterPage() {
       parseInt(formData.birth_year), parseInt(formData.birth_month), parseInt(formData.birth_day),
       hour, minute || 0
     ) : null
-    
-    // 如果真太阳时修正跨越时辰边界，使用修正后的时辰
+
     const effectiveHour = solarAdjusted?.shichenChanged ? solarAdjusted.adjustedHour : hour
     const effectiveMinute = solarAdjusted?.shichenChanged ? solarAdjusted.adjustedMinute : minute
-    
+
     let bazi
     try {
       bazi = calculateBazi(
@@ -203,50 +185,47 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-6 py-16">
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-bg">
       <div className="animate-fade-in-up w-full max-w-sm flex flex-col gap-8">
-        {/* 标题 */}
+
+        {/* 标题区 */}
         <div className="text-center flex flex-col items-center gap-3">
           <InkMark />
-          <h1 className="text-xl tracking-[0.2em] text-ink-800 font-light">
-            入斋
+          <h1 className="text-2xl font-semibold text-ink tracking-wide">
+            先认识一下你
           </h1>
-          <p className="text-[11px] text-ink-400 font-light leading-relaxed">
-            填写生辰，照见你的人格底色
+          <p className="text-sm text-sub font-light">
+            填写出生信息，生成你的能量名片
           </p>
-          <div className="w-8 h-[0.5px] bg-ink-300" />
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+
           {/* 昵称 */}
           <div>
-            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
-              昵称（选填）
-            </label>
+            <label className="block text-xs text-sub mb-1.5 font-medium">昵称（选填）</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
+              className="w-full px-4 py-3 rounded-2xl border border-line bg-card text-sm text-ink placeholder:text-line focus:outline-none focus:border-accent transition-colors"
               placeholder="如何称呼你"
             />
           </div>
 
           {/* 性别 */}
           <div>
-            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
-              性别
-            </label>
+            <label className="block text-xs text-sub mb-1.5 font-medium">性别</label>
             <div className="flex gap-3">
               {(['male', 'female'] as const).map(g => (
                 <button
                   key={g}
                   type="button"
                   onClick={() => setFormData({ ...formData, gender: g })}
-                  className={`flex-1 py-2.5 border text-xs tracking-wider font-light transition-colors duration-300 rounded-sm ${
+                  className={`flex-1 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ${
                     formData.gender === g
-                      ? 'border-ink-700 bg-ink-800 text-paper'
-                      : 'border-ink-200 text-ink-500 hover:border-ink-400'
+                      ? 'bg-accent text-white shadow-sm'
+                      : 'border border-line text-sub hover:border-accent hover:text-accent'
                   }`}
                 >
                   {g === 'male' ? '男' : '女'}
@@ -257,21 +236,19 @@ export default function RegisterPage() {
 
           {/* 出生日期 */}
           <div>
-            <label className="block text-[11px] text-ink-500 tracking-wider font-light mb-1.5">
-              出生日期（公历）
-            </label>
-            <div className="grid grid-cols-3 gap-2">
+            <label className="block text-xs text-sub mb-1.5 font-medium">出生日期（公历）</label>
+            <div className="grid grid-cols-3 gap-3">
               {[
-                { key: 'birth_year', ph: '年', min: 1940, max: 2010 },
-                { key: 'birth_month', ph: '月', min: 1, max: 12 },
-                { key: 'birth_day', ph: '日', min: 1, max: 31 },
+                { key: 'birth_year', ph: '1998', min: 1940, max: 2010 },
+                { key: 'birth_month', ph: '10', min: 1, max: 12 },
+                { key: 'birth_day', ph: '12', min: 1, max: 31 },
               ].map(f => (
                 <input
                   key={f.key}
                   type="number"
                   value={formData[f.key as keyof typeof formData] as string}
                   onChange={(e) => setFormData({ ...formData, [f.key]: e.target.value })}
-                  className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
+                  className="px-3 py-3 rounded-2xl border border-line bg-card text-sm text-ink text-center placeholder:text-line focus:outline-none focus:border-accent transition-colors"
                   placeholder={f.ph}
                   min={f.min}
                   max={f.max}
@@ -281,28 +258,26 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* 出生时间 */}
+          {/* 出生时辰 */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] text-ink-500 tracking-wider font-light">
-                出生时辰（选填）
-              </label>
+              <label className="text-xs text-sub font-medium">出生时辰（选填）</label>
               <button
                 type="button"
                 onClick={() => setShowHourInput(!showHourInput)}
-                className="text-[10px] text-ink-400 hover:text-ink-600 font-light"
+                className="text-xs text-accent font-medium"
               >
                 {showHourInput ? '用时辰选择' : '精确输入'}
               </button>
             </div>
 
             {showHourInput ? (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <input
                   type="number"
                   value={formData.birth_hour}
                   onChange={(e) => { setSelectedShichen(null); setFormData({ ...formData, birth_hour: e.target.value }) }}
-                  className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
+                  className="px-3 py-3 rounded-2xl border border-line bg-card text-sm text-ink text-center placeholder:text-line focus:outline-none focus:border-accent transition-colors"
                   placeholder="时（0-23）"
                   min={0} max={23}
                 />
@@ -310,26 +285,26 @@ export default function RegisterPage() {
                   type="number"
                   value={formData.birth_minute}
                   onChange={(e) => setFormData({ ...formData, birth_minute: e.target.value })}
-                  className="px-3 py-2.5 border border-ink-200 rounded-sm bg-transparent text-sm text-ink-800 text-center placeholder:text-ink-300 focus:outline-none focus:border-ink-400 font-light"
+                  className="px-3 py-3 rounded-2xl border border-line bg-card text-sm text-ink text-center placeholder:text-line focus:outline-none focus:border-accent transition-colors"
                   placeholder="分"
                   min={0} max={59}
                 />
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-4 gap-2">
                 {SHICHEN.map(s => (
                   <button
                     key={s.hour}
                     type="button"
                     onClick={() => handleShichenSelect(s.hour)}
-                    className={`py-2 rounded-sm text-center transition-colors duration-200 ${
+                    className={`py-2.5 rounded-xl text-center transition-all duration-200 ${
                       selectedShichen === s.hour
-                        ? 'bg-ink-800 text-paper'
-                        : 'border border-ink-200 text-ink-500 hover:border-ink-400'
+                        ? 'bg-accent text-white shadow-sm'
+                        : 'border border-line text-sub hover:border-accent hover:text-accent'
                     }`}
                   >
-                    <span className="block text-xs font-light">{s.label}</span>
-                    <span className={`block text-[9px] font-light ${selectedShichen === s.hour ? 'text-ink-300' : 'text-ink-400'}`}>
+                    <span className="block text-xs font-medium">{s.label}</span>
+                    <span className={`block text-[10px] mt-0.5 ${selectedShichen === s.hour ? 'text-white/70' : 'text-line'}`}>
                       {s.range}
                     </span>
                   </button>
@@ -338,14 +313,12 @@ export default function RegisterPage() {
             )}
           </div>
 
-
-
           {/* 农历开关 */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <div className={`w-4 h-4 border rounded-sm flex items-center justify-center transition-colors ${
-              formData.is_lunar ? 'bg-ink-800 border-ink-800' : 'border-ink-300'
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <div className={`w-5 h-5 rounded-xl border-2 flex items-center justify-center transition-colors ${
+              formData.is_lunar ? 'bg-accent border-accent' : 'border-line'
             }`}>
-              {formData.is_lunar && <span className="text-paper text-[8px]">✓</span>}
+              {formData.is_lunar && <span className="text-white text-[10px]">✓</span>}
             </div>
             <input
               type="checkbox"
@@ -353,10 +326,10 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, is_lunar: e.target.checked })}
               className="sr-only"
             />
-            <span className="text-[11px] text-ink-500 font-light">这是农历日期</span>
+            <span className="text-xs text-sub font-light">这是农历日期</span>
           </label>
 
-          {/* 真太阳时 trace（工单-02） */}
+          {/* 真太阳时 trace */}
           {formData.birth_hour && parseInt(formData.birth_year) > 0 && parseInt(formData.birth_month) > 0 && parseInt(formData.birth_day) > 0 && (
             <SolarTimeTrace
               birthYear={parseInt(formData.birth_year)}
@@ -364,7 +337,6 @@ export default function RegisterPage() {
               birthDay={parseInt(formData.birth_day)}
               birthHour={parseInt(formData.birth_hour)}
               birthMinute={parseInt(formData.birth_minute) || 0}
-
             />
           )}
 
@@ -372,14 +344,14 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading || !formData.birth_year || !formData.birth_month || !formData.birth_day}
-            className="w-full py-3 border border-ink-700 bg-ink-800 text-paper text-sm tracking-[0.15em] font-light hover:bg-ink-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-500 rounded-sm"
+            className="w-full py-3.5 rounded-2xl bg-accent text-white text-sm font-semibold tracking-wide disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#5A8D7A] transition-colors shadow-sm mt-2"
           >
-            {loading ? '正在起盘…' : '生成命签'}
+            {loading ? '生成中…' : '生成我的能量名片 →'}
           </button>
         </form>
 
-        <p className="text-center text-[10px] text-ink-300 font-light">
-          心斋 · 八字人格系统
+        <p className="text-center text-[11px] text-line font-light">
+          你的出生信息只有你自己能看到
         </p>
       </div>
     </main>
