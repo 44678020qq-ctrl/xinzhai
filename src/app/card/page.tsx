@@ -299,12 +299,6 @@ export default function CardPage() {
             看看谁能和你共鸣 →
           </button>
           <button
-            onClick={() => router.push("/flow")}
-            className="w-full py-2.5 rounded-2xl bg-card text-ink text-sm font-medium tracking-wide border border-line hover:border-accent/40 transition-colors"
-          >
-            看看流年运势
-          </button>
-          <button
             onClick={() => window.print()}
             className="w-full py-2.5 rounded-2xl bg-white text-accent text-sm font-medium tracking-wide border-2 border-accent hover:bg-accent-soft transition-colors"
           >
