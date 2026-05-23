@@ -110,10 +110,10 @@ export default function RegisterPage() {
       is_lunar: formData.is_lunar
     }
 
-    const hour = formData.birth_hour ? parseInt(formData.birth_hour) : null
-    const minute = formData.birth_minute ? parseInt(formData.birth_minute) : null
+    const hour = formData.birth_hour !== '' ? parseInt(formData.birth_hour) : null
+    const minute = formData.birth_minute !== '' ? parseInt(formData.birth_minute) : null
 
-    const solarAdjusted = hour ? adjustToSolarTime(
+    const solarAdjusted = (hour !== null && !isNaN(hour)) ? adjustToSolarTime(
       parseInt(formData.birth_year), parseInt(formData.birth_month), parseInt(formData.birth_day),
       hour, minute || 0
     ) : null
@@ -121,17 +121,21 @@ export default function RegisterPage() {
     const effectiveHour = solarAdjusted?.shichenChanged ? solarAdjusted.adjustedHour : hour
     const effectiveMinute = solarAdjusted?.shichenChanged ? solarAdjusted.adjustedMinute : minute
 
+    const year = parseInt(formData.birth_year)
+    const month = parseInt(formData.birth_month)
+    const day = parseInt(formData.birth_day)
+    if (isNaN(year) || isNaN(month) || isNaN(day) || year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
+      alert('请填写有效的出生日期')
+      setLoading(false)
+      return
+    }
+
     let bazi
     try {
-      bazi = calculateBazi(
-        parseInt(formData.birth_year),
-        parseInt(formData.birth_month),
-        parseInt(formData.birth_day),
-        effectiveHour,
-        effectiveMinute,
-        formData.is_lunar
-      )
-    } catch {
+      bazi = calculateBazi(year, month, day, effectiveHour, effectiveMinute, formData.is_lunar)
+    } catch (err) {
+      console.error('八字计算失败:', err)
+      alert('出生信息有误，请检查日期是否有效')
       setLoading(false)
       return
     }

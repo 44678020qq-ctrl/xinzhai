@@ -40,14 +40,17 @@ export default function ChatPage() {
 
   useEffect(() => {
     const raw = sessionStorage.getItem("xinzhai_chat_target");
-    if (raw) setChatTarget(JSON.parse(raw));
+    let target: ChatTarget | null = null;
+    if (raw) {
+      try { target = JSON.parse(raw); setChatTarget(target); } catch {}
+    }
 
     const t = now();
     const greeting = GREETING_POOL[Math.floor(Math.random() * GREETING_POOL.length)];
     setMessages([{
       id: "m1", from: "other", time: t,
-      text: chatTarget
-        ? `和 ${chatTarget.name || chatTarget.wuxing} 的对话开始了`
+      text: target
+        ? `和 ${target.name || target.wuxing} 的对话开始了`
         : greeting,
     }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps

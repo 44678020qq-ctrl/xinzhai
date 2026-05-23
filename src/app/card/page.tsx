@@ -139,12 +139,16 @@ export default function CardPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(form),
           });
-          const data = await res.json();
-          setCard(data.card);
-          setBazi(data.bazi);
-          setEngine("ts");
-          setLoading(false);
-          return;
+          if (res.ok) {
+            const data = await res.json();
+            if (data.card && data.bazi) {
+              setCard(data.card);
+              setBazi(data.bazi);
+              setEngine("ts");
+              setLoading(false);
+              return;
+            }
+          }
         } catch (e) { console.error("TS 引擎也失败:", e); }
       }
 
@@ -167,6 +171,7 @@ export default function CardPage() {
           }
         }
       } catch {}
+      setLoading(false);
       router.push("/register");
     };
     loadData().catch(err => { console.error(err); setLoading(false); });
