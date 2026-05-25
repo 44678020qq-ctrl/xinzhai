@@ -130,12 +130,21 @@ xinzhai/
 - 调候：穷通宝鉴120条
 - 大运：按性别+年柱阴阳推顺逆
 
-### 匹配算法（match/page.tsx）
-- 恋人：互补补喜用 + 天干五合加分
+### 匹配算法（match/page.tsx）⚠️ 需按v0.1规格重写
+**当前实现（简化版，不达标）：**
+- 恋人：互补补喜用 + 天干五合加分（仅查日主vs日主）
 - 老板：贵人/生扶方向
 - 合伙人：补弱五行
 - 玩伴：同频/无冲克
 - 评分：60基础 ± 因子 + 随机±8，clamp 40-99
+- 缺：UserProfile预计算、wuxing_power分布、5个关系原子(A/B/C/D/E)、加权公式、tier档位、special_fate标签
+
+**v0.1规格目标：**
+- 5个关系原子：A互补/B相合(天干五合全柱)/C生扶/D同频(五行分布距离)/E冲克(天干克+地支冲刑)
+- 4套加权公式：恋人=0.7A+0.3D+bonusB、老板=0.8C+0.2D、合伙人=0.65补弱+0.35A、玩伴=0.75D+0.25A
+- 输出：score+tier(很合/合/还行/不强求)+special_fate+平实reason
+- MVP先做A/B/D/E+恋人/玩伴，后补C+老板/合伙人
+- 6个创始人可调开关
 
 ### 降级链（card/page.tsx）
 ```
@@ -177,16 +186,20 @@ sessionStorage → Python引擎(503) → TS引擎 → Supabase profile → /regi
 - [x] CONTEXT.md + ADR + diagnose 工程实践
 
 ### ❌ 未完成（P0 阻塞上线）
-1. **国内访问方案未定** — Vercel 国内慢/不稳定，3方案待选
-2. **RLS 加固 SQL 未执行** — rls_hardening_fixed.sql 已备，需在 Dashboard 无痕模式执行
-3. **service_role key 泄露** — 执行 RLS 后必须 Regenerate
+1. **匹配算法需按v0.1规格重写** — 当前是简化加减分，缺5关系原子/加权公式/UserProfile预计算（心脏不对）
+2. **国内访问方案未定** — Vercel 国内慢/不稳定，3方案待选
+3. **RLS 加固 SQL 未执行** — rls_hardening_fixed.sql 已备，需在 Dashboard 无痕模式执行
+4. **service_role key 泄露** — 执行 RLS 后必须 Regenerate
 
 ### ⚠️ 未完成（P1 功能缺陷）
-4. **flow/page.tsx 硬编码数据** — 流年评分未对接真实大运
-5. **旺衰评分仅3档**（缺极旺/偏旺偏弱，当前：极旺/旺/中和/弱/极弱 但实际只分3档打分）
-6. **日柱/月柱显示 bug**（未排查）
-7. **chat greeting bug**（chatTarget null 时显示"和 ?? 的对话"）
-8. **register 无日期合法性校验**（2月30日等不拦截）
+5. **真实用户池仅1人** — 代码已接Supabase，但实际体验仍是mock降级
+6. **flow/page.tsx 硬编码数据** — 流年评分未对接真实大运
+7. **旺衰评分仅3档**（缺极旺/偏旺偏弱，当前：极旺/旺/中和/弱/极弱 但实际只分3档打分）
+8. **日柱/月柱显示 bug**（未排查）
+9. **chat greeting bug**（chatTarget null 时显示"和 ?? 的对话"）
+10. **register 无日期合法性校验**（2月30日等不拦截）
+11. **chat 开场白未按双方八字特征生成** — 当前是模板+随机池
+12. **状态完整性未全覆盖** — chat空会话/match空匹配等边界
 
 ### 📋 未完成（P2 后续迭代）
 9. 真实用户匹配池（当前仅1个真实用户）
