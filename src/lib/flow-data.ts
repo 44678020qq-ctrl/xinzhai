@@ -49,7 +49,7 @@ export interface FlowData {
   bazi: string[];
   dayMaster: string;
   dayMasterWuxing: string;
-  strengthLevel: string;     // 极旺/旺/中和/弱/极弱
+  strengthLevel: string;     // 极旺/偏旺/旺/中和/弱/偏弱/极弱
   yongShen: string[];        // 用神五行
   xiShen: string[];          // 喜神五行
   jiShen: string[];          // 忌神五行
@@ -115,8 +115,8 @@ export function calculateFlowScore(
   
   const dayGan = bazi.dayGan;
   const dayWx = bazi.day.wuxing_gan;
-  const isStrong = strength.level === "极旺" || strength.level === "旺";
-  const isWeak = strength.level === "极弱" || strength.level === "弱";
+  const isStrong = strength.level === "极旺" || strength.level === "偏旺" || strength.level === "旺";
+  const isWeak = strength.level === "极弱" || strength.level === "偏弱" || strength.level === "弱";
   
   // ── 十神 → 基础分（根据旺衰翻转）──
   const shiShen = getShiShen(dayGan, liuNianGan);
@@ -247,7 +247,7 @@ function deduceLifeEvents(
 ): LifeEvent[] {
   const events: LifeEvent[] = [];
   const dayGan = bazi.dayGan;
-  const isStrong = strength.level === "极旺" || strength.level === "旺";
+  const isStrong = strength.level === "极旺" || strength.level === "偏旺" || strength.level === "旺";
   
   // ── 大运转潮点 ──
   for (const dy of daYunList) {
@@ -337,7 +337,7 @@ export function generateFlowData(
   const strength = judgeStrength(bazi);
   const yongShen = findYongShen(bazi);
   const daYunList = calculateDaYun(bazi, gender);
-  const isStrong = strength.level === "极旺" || strength.level === "旺";
+  const isStrong = strength.level === "极旺" || strength.level === "偏旺" || strength.level === "旺";
   
   const GANS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
   const ZHIS = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];

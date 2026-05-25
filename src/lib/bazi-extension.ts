@@ -58,7 +58,7 @@ export interface YinGuoChain {
   
   // 旺衰判断
   strength: {
-    level: "极旺" | "旺" | "中和" | "弱" | "极弱";
+    level: "极旺" | "偏旺" | "旺" | "中和" | "弱" | "偏弱" | "极弱";
     score: number;
     deLing: boolean;
     deDi: boolean;
@@ -380,14 +380,14 @@ function findYongShen(bazi: BaziResult): {
   const woSheng = cycle[(idx + 1) % 5];
   const woKe = cycle[(idx + 2) % 5];
   
-  if (strength.level === "极弱" || strength.level === "弱") {
+  if (strength.level === "极弱" || strength.level === "弱" || strength.level === "偏弱") {
     return {
       yongShen: [shengWo, tongLei],
       xiShen: [woSheng],
       jiShen: [keWo, woKe],
       reason: `日主${strength.level}，需${shengWo}生扶、${tongLei}帮身`
     };
-  } else if (strength.level === "极旺" || strength.level === "旺") {
+  } else if (strength.level === "极旺" || strength.level === "旺" || strength.level === "偏旺") {
     return {
       yongShen: [keWo, woSheng, woKe],
       xiShen: [],

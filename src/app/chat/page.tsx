@@ -45,13 +45,12 @@ export default function ChatPage() {
       try { target = JSON.parse(raw); setChatTarget(target); } catch {}
     }
 
+    if (!target) return; // 无匹配对象，不塞假消息
+
     const t = now();
-    const greeting = GREETING_POOL[Math.floor(Math.random() * GREETING_POOL.length)];
     setMessages([{
       id: "m1", from: "other", time: t,
-      text: target
-        ? `和 ${target.name || target.wuxing} 的对话开始了`
-        : greeting,
+      text: `和 ${target.name || target.wuxing} 的对话开始了`,
     }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -91,14 +90,35 @@ export default function ChatPage() {
     }
   };
 
+  // 空会话：无匹配对象 → 引导去遇合
+  if (!chatTarget) {
+    return (
+      <main className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-accent-soft flex items-center justify-center mb-4">
+          <span className="text-2xl">💬</span>
+        </div>
+        <h2 className="text-base font-semibold text-ink mb-2">还没有对话</h2>
+        <p className="text-sm text-sub mb-6 leading-relaxed">
+          先去遇合找个人，<br />聊起来才知道合不合
+        </p>
+        <button
+          onClick={() => router.push("/match")}
+          className="px-6 py-2.5 rounded-2xl bg-accent text-white text-sm font-medium hover:bg-[#5A8D7A] transition-colors"
+        >
+          去遇合
+        </button>
+      </main>
+    );
+  }
+
   return (
-    <main className="flex flex-col h-screen max-w-sm mx-auto bg-bg">
+    <main className="flex flex-col" style={{ height: "calc(100vh - 3.5rem)" }}>
       {/* 顶部栏 */}
       <div className="flex items-center gap-3 px-4 py-3 bg-card border-b border-line/50 shrink-0">
         <button onClick={() => router.push("/match")} className="text-lg text-sub hover:text-accent transition-colors">←</button>
         <div className="flex-1 flex flex-col items-center">
           <span className="text-xs font-semibold text-ink">
-            {chatTarget ? chatTarget.name || chatTarget.wuxing : "心斋 · 对谈"}
+            {chatTarget.name || chatTarget.wuxing}
           </span>
         </div>
         <div className="w-4" />

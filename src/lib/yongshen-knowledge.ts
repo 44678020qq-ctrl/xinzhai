@@ -11,7 +11,7 @@
 
 // ────────────────── 类型定义 ──────────────────
 
-export type Strength = '极旺' | '旺' | '中和' | '弱' | '极弱';
+export type Strength = '极旺' | '偏旺' | '旺' | '中和' | '弱' | '偏弱' | '极弱';
 export type MonthBranch = '寅' | '卯' | '辰' | '巳' | '午' | '未' | '申' | '酉' | '戌' | '亥' | '子' | '丑';
 export type DayMaster = '甲' | '乙' | '丙' | '丁' | '戊' | '己' | '庚' | '辛' | '壬' | '癸';
 
@@ -235,7 +235,7 @@ export function generateYongShenProfile(
   const summary = `${dayMaster}日主生于${monthBranch}月，${tiaoHou.reason}。`;
   
   // 生成核心论断（因果链）
-  const reasoning = `按《穷通宝鉴》调候法，${dayMaster}木生于${monthBranch}月，${tiaoHou.need.length > 0 ? `首取${tiaoHou.need.join('、')}为用` : '需综合判断'}。${strength === '极旺' ? '日主过旺，宜泄宜克' : strength === '极弱' ? '日主过弱，宜生宜扶' : '日主中和，顺势而为'}。`;
+  const reasoning = `按《穷通宝鉴》调候法，${dayMaster}木生于${monthBranch}月，${tiaoHou.need.length > 0 ? `首取${tiaoHou.need.join('、')}为用` : '需综合判断'}。${strength === '极旺' || strength === '偏旺' ? '日主过旺，宜泄宜克' : strength === '极弱' || strength === '偏弱' ? '日主过弱，宜生宜扶' : '日主中和，顺势而为'}。`;
   
   // 生成命盘依据
   const basis = `调候表显示：需${tiaoHou.need.join('、')}，忌${tiaoHou.avoid.join('、')}。原理：${tiaoHou.reason}。`;

@@ -203,6 +203,10 @@ export default function CardPage() {
   const wxEntries = card.wuxingStrength ? Object.entries(card.wuxingStrength) : [];
   const pillars = [bazi.year, bazi.month, bazi.day, bazi.hour];
 
+  // DEBUG: 查看神煞数据
+  console.log('[DEBUG] shenSha:', JSON.stringify(card.shenSha));
+  console.log('[DEBUG] engine:', engine);
+
   return (
     <main className="min-h-screen flex flex-col items-center px-6 py-12 bg-bg">
       <div className="animate-fade-in-up w-full max-w-sm flex flex-col gap-6">
@@ -281,6 +285,27 @@ export default function CardPage() {
               {card.yongShen.xiShen.map((el, i) => (
                 <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-accent-soft text-accent">{el}</span>
               ))}
+            </div>
+          )}
+
+          {/* 神煞（最多3条轻标签） */}
+          {card.shenSha && card.shenSha.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="text-[10px] text-sub font-medium">神煞</p>
+              <div className="flex flex-wrap gap-1.5">
+                {card.shenSha.slice(0, 3).map((s, i) => (
+                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-bg text-sub border border-line/50">
+                    {s.name}
+                    <button
+                      onClick={() => router.push(`/share?name=${encodeURIComponent(s.name)}`)} 
+                      className="ml-1 text-accent hover:text-accent/80 transition-colors text-[10px]"
+                      title="晒神煞"
+                    >
+                      晒
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 

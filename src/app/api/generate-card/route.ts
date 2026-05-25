@@ -277,9 +277,9 @@ function getEmotionPattern(wuxing: string, strength: string): string {
   const baseStr = base[wuxing] || '情绪独特，难以捉摸';
   
   // 根据旺衰补充
-  if (strength === '极旺' || strength === '旺') {
+  if (strength === '极旺' || strength === '偏旺' || strength === '旺') {
     return baseStr + '，能量充沛';
-  } else if (strength === '极弱' || strength === '弱') {
+  } else if (strength === '极弱' || strength === '偏弱' || strength === '弱') {
     return baseStr + '，需外界支持';
   }
   return baseStr;

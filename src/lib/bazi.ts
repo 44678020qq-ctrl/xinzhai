@@ -48,7 +48,7 @@ export interface GeJu {
 export interface FullChart {
   bazi: BaziResult;
   strength: {
-    level: "极旺" | "旺" | "中和" | "弱" | "极弱";
+    level: "极旺" | "偏旺" | "旺" | "中和" | "弱" | "偏弱" | "极弱";
     score: number;
     deLing: boolean;
     deDi: boolean;
@@ -357,10 +357,10 @@ export function calculateWuxingStrength(bazi: BaziResult): {
 /**
  * M4: 日主旺衰判断（5档 · 工单-03 v1.1）
  * 极旺 / 旺 / 中和 / 弱 / 极弱
- * 原偏旺并入旺，偏弱并入弱
+ * 7档：极旺/偏旺/旺/中和/弱/偏弱/极弱
  */
 export function judgeStrength(bazi: BaziResult): {
-  level: "极旺" | "旺" | "中和" | "弱" | "极弱";
+  level: "极旺" | "偏旺" | "旺" | "中和" | "弱" | "偏弱" | "极弱";
   score: number;
   deLing: boolean;  // 得令
   deDi: boolean;    // 得地
@@ -406,12 +406,14 @@ export function judgeStrength(bazi: BaziResult): {
   // 得助：比劫是否透干或有力
   const deZhu = wxStrength.wuxing[tongLei] > 1.5;
   
-  // 判断等级
-  let level: "极旺" | "旺" | "中和" | "弱" | "极弱";
-  if (ratio > 0.70) level = "极旺";
-  else if (ratio > 0.52) level = "旺";      // 含旧偏旺
+  // 判断等级 — 7档
+  let level: "极旺" | "偏旺" | "旺" | "中和" | "弱" | "偏弱" | "极弱";
+  if (ratio > 0.75) level = "极旺";
+  else if (ratio > 0.62) level = "偏旺";
+  else if (ratio > 0.52) level = "旺";
   else if (ratio > 0.48) level = "中和";
-  else if (ratio > 0.30) level = "弱";       // 含旧偏弱
+  else if (ratio > 0.38) level = "弱";
+  else if (ratio > 0.25) level = "偏弱";
   else level = "极弱";
   
   return {level, score: Math.round(ratio * 100) / 100, deLing, deDi, deSheng, deZhu};
