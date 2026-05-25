@@ -17,21 +17,11 @@ export default function ShareClient() {
     return null;
   }
 
-  // DEBUG: 显示完整 searchParams
-  const allParams = Array.from(searchParams.entries());
-  
   if (!name || !isShareableShensha(name)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="text-center">
           <p className="text-sub text-sm mb-4">神煞不存在或暂不支持分享</p>
-          <p className="text-ink text-xs bg-gray-100 p-3 rounded-lg mb-2 max-w-md mx-auto" style={{wordBreak:'break-all'}}>
-            调试信息：<br/>
-            name={JSON.stringify(name)}<br/>
-            allParams={JSON.stringify(allParams)}<br/>
-            href={typeof window !== 'undefined' ? window.location.href : 'N/A'}<br/>
-            known={JSON.stringify(['天乙贵人','驿马','华盖','桃花','文昌贵人'])}
-          </p>
           <a href="/card" className="text-accent text-xs hover:underline">返回命签 →</a>
         </div>
       </div>

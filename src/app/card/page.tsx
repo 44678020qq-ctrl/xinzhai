@@ -123,6 +123,27 @@ export default function CardPage() {
                 day: pillars[2] || { gan: '?', zhi: '?', wuxing_gan: '' },
                 hour: pillars[3] || undefined,
               };
+              // Python 引擎可能不返回神煞，用 TS 引擎补充
+              if (!a.shen_sha || a.shen_sha.length === 0) {
+                try {
+                  const tsRes = await fetch("/api/generate-card", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      birth_year: form.birth_year, birth_month: form.birth_month,
+                      birth_day: form.birth_day, birth_hour: form.birth_hour,
+                      birth_minute: form.birth_minute, gender: form.gender,
+                    }),
+                  });
+                  if (tsRes.ok) {
+                    const tsData = await tsRes.json();
+                    if (tsData.card?.shenSha) {
+                      cardData.shenSha = tsData.card.shenSha;
+                    }
+                  }
+                } catch (e) { console.warn("补充神煞失败:", e); }
+              }
+
               setCard(cardData);
               setBazi(baziResult);
               setEngine("python");
