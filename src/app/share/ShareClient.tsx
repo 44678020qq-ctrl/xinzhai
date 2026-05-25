@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { SHENSHA_SHARE_DATA, isShareableShensha } from "@/lib/shensha-data";
 
-interface ShareClientProps {
-  name?: string;
-}
-
-export default function ShareClient({ name }: ShareClientProps) {
+export default function ShareClient() {
   const [mounted, setMounted] = useState(false);
+  const searchParams = useSearchParams();
+  const name = searchParams.get('name');
 
   useEffect(() => {
     setMounted(true);
@@ -18,15 +17,11 @@ export default function ShareClient({ name }: ShareClientProps) {
     return null;
   }
 
-  // DEBUG
-  console.log('[Share] name:', JSON.stringify(name), 'isShareable:', name ? isShareableShensha(name) : 'no-name', 'known:', ['天乙贵人','驿马','华盖','桃花','文昌贵人']);
-  
   if (!name || !isShareableShensha(name)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="text-center">
           <p className="text-sub text-sm mb-4">神煞不存在或暂不支持分享</p>
-          <p className="text-sub text-xs mb-2">(调试: name={JSON.stringify(name)})</p>
           <a href="/card" className="text-accent text-xs hover:underline">返回命签 →</a>
         </div>
       </div>
