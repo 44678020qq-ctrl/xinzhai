@@ -28,6 +28,10 @@ function adjustToSolarTime(
     adjustedHour += Math.floor(adjustedMinute / 60) - 1;
     adjustedMinute = (adjustedMinute % 60 + 60) % 60;
   }
+  // 保护：校正后 hour 超出 0-23 范围时回退到原始值（避免 lunar-javascript 抛异常）
+  if (adjustedHour < 0 || adjustedHour > 23) {
+    return { adjustedHour: birthHour, adjustedMinute: birthMinute || 0, shichenChanged: false, originalShichen: getShichenName(birthHour), adjustedShichen: getShichenName(birthHour) };
+  }
   const originalShichen = getShichenName(birthHour);
   const adjustedShichen = getShichenName(adjustedHour);
   return {
