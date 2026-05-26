@@ -200,17 +200,32 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '桃花': [{
     name: '桃花',
     check: (b) => {
-      // B类：按年支或日支的三合局查
-      const sanHeTaohua: Record<string, string> = {
-        'shui': '酉', 'huo': '卯', 'jin': '午', 'mu': '子'
-      };
-      const yearGroup = getSanHeGroup(b.year?.zhi);
-      const dayGroup = getSanHeGroup(b.day?.zhi);
+      // B类：年支/日支属某三合局→桃花在该三合局的桃花位
+      // 亥卯未→子，寅午戌→卯，申子辰→酉，巳酉丑→午
+      const yearZhi = b.year?.zhi;
+      const dayZhi = b.day?.zhi;
       const targets: string[] = [];
-      if (yearGroup && sanHeTaohua[yearGroup]) targets.push(sanHeTaohua[yearGroup]);
-      if (dayGroup && sanHeTaohua[dayGroup]) targets.push(sanHeTaohua[dayGroup]);
+      
+      // 年支属某三合局→桃花在该三合局的桃花位
+      if (yearZhi) {
+        if (['亥', '卯', '未'].includes(yearZhi)) targets.push('子');
+        if (['寅', '午', '戌'].includes(yearZhi)) targets.push('卯');
+        if (['申', '子', '辰'].includes(yearZhi)) targets.push('酉');
+        if (['巳', '酉', '丑'].includes(yearZhi)) targets.push('午');
+      }
+      
+      // 日支同理
+      if (dayZhi) {
+        if (['亥', '卯', '未'].includes(dayZhi)) targets.push('子');
+        if (['寅', '午', '戌'].includes(dayZhi)) targets.push('卯');
+        if (['申', '子', '辰'].includes(dayZhi)) targets.push('酉');
+        if (['巳', '酉', '丑'].includes(dayZhi)) targets.push('午');
+      }
+      
       const uniqueTargets = [...new Set(targets)];
       if (uniqueTargets.length === 0) return null;
+      
+      // 检查四柱地支是否有桃花位置
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
@@ -282,17 +297,28 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '驿马': [{
     name: '驿马',
     check: (b) => {
-      // B类：按年支或日支的三合局查
-      const sanHeYima: Record<string, string> = {
-        'shui': '寅', 'huo': '申', 'jin': '亥', 'mu': '巳'
-      };
-      const yearGroup = getSanHeGroup(b.year?.zhi);
-      const dayGroup = getSanHeGroup(b.day?.zhi);
+      // 亥卯未→巳，寅午戌→申，申子辰→寅，巳酉丑→亥
+      const yearZhi = b.year?.zhi;
+      const dayZhi = b.day?.zhi;
       const targets: string[] = [];
-      if (yearGroup && sanHeYima[yearGroup]) targets.push(sanHeYima[yearGroup]);
-      if (dayGroup && sanHeYima[dayGroup]) targets.push(sanHeYima[dayGroup]);
+      
+      if (yearZhi) {
+        if (['亥', '卯', '未'].includes(yearZhi)) targets.push('巳');
+        if (['寅', '午', '戌'].includes(yearZhi)) targets.push('申');
+        if (['申', '子', '辰'].includes(yearZhi)) targets.push('寅');
+        if (['巳', '酉', '丑'].includes(yearZhi)) targets.push('亥');
+      }
+      
+      if (dayZhi) {
+        if (['亥', '卯', '未'].includes(dayZhi)) targets.push('巳');
+        if (['寅', '午', '戌'].includes(dayZhi)) targets.push('申');
+        if (['申', '子', '辰'].includes(dayZhi)) targets.push('寅');
+        if (['巳', '酉', '丑'].includes(dayZhi)) targets.push('亥');
+      }
+      
       const uniqueTargets = [...new Set(targets)];
       if (uniqueTargets.length === 0) return null;
+      
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
@@ -305,17 +331,28 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '将星': [{
     name: '将星',
     check: (b) => {
-      // B类：按年支或日支的三合局查
-      const sanHeJiangXing: Record<string, string> = {
-        'shui': '子', 'huo': '午', 'jin': '酉', 'mu': '卯'
-      };
-      const yearGroup = getSanHeGroup(b.year?.zhi);
-      const dayGroup = getSanHeGroup(b.day?.zhi);
+      // 亥卯未→卯，寅午戌→午，申子辰→子，巳酉丑→酉
+      const yearZhi = b.year?.zhi;
+      const dayZhi = b.day?.zhi;
       const targets: string[] = [];
-      if (yearGroup && sanHeJiangXing[yearGroup]) targets.push(sanHeJiangXing[yearGroup]);
-      if (dayGroup && sanHeJiangXing[dayGroup]) targets.push(sanHeJiangXing[dayGroup]);
+      
+      if (yearZhi) {
+        if (['亥', '卯', '未'].includes(yearZhi)) targets.push('卯');
+        if (['寅', '午', '戌'].includes(yearZhi)) targets.push('午');
+        if (['申', '子', '辰'].includes(yearZhi)) targets.push('子');
+        if (['巳', '酉', '丑'].includes(yearZhi)) targets.push('酉');
+      }
+      
+      if (dayZhi) {
+        if (['亥', '卯', '未'].includes(dayZhi)) targets.push('卯');
+        if (['寅', '午', '戌'].includes(dayZhi)) targets.push('午');
+        if (['申', '子', '辰'].includes(dayZhi)) targets.push('子');
+        if (['巳', '酉', '丑'].includes(dayZhi)) targets.push('酉');
+      }
+      
       const uniqueTargets = [...new Set(targets)];
       if (uniqueTargets.length === 0) return null;
+      
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
@@ -349,17 +386,29 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '华盖': [{
     name: '华盖',
     check: (b) => {
-      // B类：按年支或日支的三合局查
-      const sanHeHuagai: Record<string, string> = {
-        'shui': '辰', 'huo': '戌', 'jin': '丑', 'mu': '未'
-      };
-      const yearGroup = getSanHeGroup(b.year?.zhi);
-      const dayGroup = getSanHeGroup(b.day?.zhi);
+      // B类：年支/日支属某三合局→华盖在该三合局的墓支（重合）
+      // 亥卯未→未，寅午戌→戌，申子辰→辰，巳酉丑→丑
+      const yearZhi = b.year?.zhi;
+      const dayZhi = b.day?.zhi;
       const targets: string[] = [];
-      if (yearGroup && sanHeHuagai[yearGroup]) targets.push(sanHeHuagai[yearGroup]);
-      if (dayGroup && sanHeHuagai[dayGroup]) targets.push(sanHeHuagai[dayGroup]);
+      
+      // 年支/日支属亥卯未局→华盖在未
+      if (yearZhi && ['亥', '卯', '未'].includes(yearZhi)) targets.push('未');
+      if (dayZhi && ['亥', '卯', '未'].includes(dayZhi)) targets.push('未');
+      // 年支/日支属寅午戌局→华盖在戌
+      if (yearZhi && ['寅', '午', '戌'].includes(yearZhi)) targets.push('戌');
+      if (dayZhi && ['寅', '午', '戌'].includes(dayZhi)) targets.push('戌');
+      // 年支/日支属申子辰局→华盖在辰
+      if (yearZhi && ['申', '子', '辰'].includes(yearZhi)) targets.push('辰');
+      if (dayZhi && ['申', '子', '辰'].includes(dayZhi)) targets.push('辰');
+      // 年支/日支属巳酉丑局→华盖在丑
+      if (yearZhi && ['巳', '酉', '丑'].includes(yearZhi)) targets.push('丑');
+      if (dayZhi && ['巳', '酉', '丑'].includes(dayZhi)) targets.push('丑');
+      
       const uniqueTargets = [...new Set(targets)];
       if (uniqueTargets.length === 0) return null;
+      
+      // 检查四柱地支是否有华盖位置
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
@@ -491,17 +540,28 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '劫煞': [{
     name: '劫煞',
     check: (b) => {
-      // B类：按年支或日支的三合局查
-      const sanHeJieSha: Record<string, string> = {
-        'shui': '巳', 'huo': '亥', 'jin': '寅', 'mu': '申'
-      };
-      const yearGroup = getSanHeGroup(b.year?.zhi);
-      const dayGroup = getSanHeGroup(b.day?.zhi);
+      // 亥卯未→申，寅午戌→亥，申子辰→巳，巳酉丑→寅
+      const yearZhi = b.year?.zhi;
+      const dayZhi = b.day?.zhi;
       const targets: string[] = [];
-      if (yearGroup && sanHeJieSha[yearGroup]) targets.push(sanHeJieSha[yearGroup]);
-      if (dayGroup && sanHeJieSha[dayGroup]) targets.push(sanHeJieSha[dayGroup]);
+      
+      if (yearZhi) {
+        if (['亥', '卯', '未'].includes(yearZhi)) targets.push('申');
+        if (['寅', '午', '戌'].includes(yearZhi)) targets.push('亥');
+        if (['申', '子', '辰'].includes(yearZhi)) targets.push('巳');
+        if (['巳', '酉', '丑'].includes(yearZhi)) targets.push('寅');
+      }
+      
+      if (dayZhi) {
+        if (['亥', '卯', '未'].includes(dayZhi)) targets.push('申');
+        if (['寅', '午', '戌'].includes(dayZhi)) targets.push('亥');
+        if (['申', '子', '辰'].includes(dayZhi)) targets.push('巳');
+        if (['巳', '酉', '丑'].includes(dayZhi)) targets.push('寅');
+      }
+      
       const uniqueTargets = [...new Set(targets)];
       if (uniqueTargets.length === 0) return null;
+      
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
