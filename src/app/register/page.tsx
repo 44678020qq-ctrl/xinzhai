@@ -139,7 +139,10 @@ export default function RegisterPage() {
       bazi = calculateBazi(year, month, day, effectiveHour, effectiveMinute, formData.is_lunar)
     } catch (err) {
       console.error('八字计算失败:', err)
-      alert('出生信息有误，请检查日期是否有效')
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('详细错误:', msg)
+      // 常见原因：日期越界、时辰无效、lunar-javascript内部异常
+      alert('出生信息有误：' + (msg.length > 50 ? '请检查日期和时辰' : msg))
       setLoading(false)
       return
     }
