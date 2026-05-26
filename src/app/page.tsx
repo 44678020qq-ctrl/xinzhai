@@ -24,7 +24,7 @@ export default function WelcomePage() {
           </h1>
           <div className="w-12 h-[0.5px] bg-line" />
           <p className="text-sm text-sub tracking-wider font-light">
-            八字人格 · 共鸣连接
+            看见自己内心的能量
           </p>
         </div>
 

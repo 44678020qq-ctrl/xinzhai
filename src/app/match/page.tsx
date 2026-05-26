@@ -58,7 +58,7 @@ function calcCompatibilityByRole(
       if (hasChongKe) baseScore -= 15;
       break;
   }
-  return Math.min(99, Math.max(40, baseScore + Math.floor(Math.random() * 8)));
+  return Math.min(99, Math.max(40, baseScore));
 }
 
 /** 平实的契合理由 */
