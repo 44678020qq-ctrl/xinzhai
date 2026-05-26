@@ -13,6 +13,44 @@ function posLabel(p: string): string {
   return map[p] || p;
 }
 
+// 三合局辅助函数：返回地支所属的三合局名
+function getSanHeGroup(zhi: string): string | null {
+  const sanHeGroups: Record<string, string> = {
+    '申': 'shui', '子': 'shui', '辰': 'shui',
+    '寅': 'huo', '午': 'huo', '戌': 'huo',
+    '巳': 'jin', '酉': 'jin', '丑': 'jin',
+    '亥': 'mu', '卯': 'mu', '未': 'mu'
+  };
+  return sanHeGroups[zhi] || null;
+}
+
+// 旬空辅助函数：根据日柱干支返回空亡二支
+function getXunKong(dayGan: string, dayZhi: string): string[] {
+  // 六十甲子旬空表
+  const xunKongMap: Record<string, string[]> = {
+    // 甲子旬（甲子到癸酉）空戌亥
+    '甲子': ['戌', '亥'], '乙丑': ['戌', '亥'], '丙寅': ['戌', '亥'], '丁卯': ['戌', '亥'], '戊辰': ['戌', '亥'],
+    '己巳': ['戌', '亥'], '庚午': ['戌', '亥'], '辛未': ['戌', '亥'], '壬申': ['戌', '亥'], '癸酉': ['戌', '亥'],
+    // 甲戌旬（甲戌到癸未）空申酉
+    '甲戌': ['申', '酉'], '乙亥': ['申', '酉'], '丙子': ['申', '酉'], '丁丑': ['申', '酉'], '戊寅': ['申', '酉'],
+    '己卯': ['申', '酉'], '庚辰': ['申', '酉'], '辛巳': ['申', '酉'], '壬午': ['申', '酉'], '癸未': ['申', '酉'],
+    // 甲申旬（甲申到癸巳）空午未
+    '甲申': ['午', '未'], '乙酉': ['午', '未'], '丙戌': ['午', '未'], '丁亥': ['午', '未'], '戊子': ['午', '未'],
+    '己丑': ['午', '未'], '庚寅': ['午', '未'], '辛卯': ['午', '未'], '壬辰': ['午', '未'], '癸巳': ['午', '未'],
+    // 甲午旬（甲午到癸卯）空辰巳
+    '甲午': ['辰', '巳'], '乙未': ['辰', '巳'], '丙申': ['辰', '巳'], '丁酉': ['辰', '巳'], '戊戌': ['辰', '巳'],
+    '己亥': ['辰', '巳'], '庚子': ['辰', '巳'], '辛丑': ['辰', '巳'], '壬寅': ['辰', '巳'], '癸卯': ['辰', '巳'],
+    // 甲辰旬（甲辰到癸丑）空寅卯
+    '甲辰': ['寅', '卯'], '乙巳': ['寅', '卯'], '丙午': ['寅', '卯'], '丁未': ['寅', '卯'], '戊申': ['寅', '卯'],
+    '己酉': ['寅', '卯'], '庚戌': ['寅', '卯'], '辛亥': ['寅', '卯'], '壬子': ['寅', '卯'], '癸丑': ['寅', '卯'],
+    // 甲寅旬（甲寅到癸亥）空子丑
+    '甲寅': ['子', '丑'], '乙卯': ['子', '丑'], '丙辰': ['子', '丑'], '丁巳': ['子', '丑'], '戊午': ['子', '丑'],
+    '己未': ['子', '丑'], '庚申': ['子', '丑'], '辛酉': ['子', '丑'], '壬戌': ['子', '丑'], '癸亥': ['子', '丑']
+  };
+  const key = `${dayGan}${dayZhi}`;
+  return xunKongMap[key] || [];
+}
+
 // check 返回类型：单个对象、数组（支持多柱命中）或 null
 type CheckResult = {position: string; description: string; warning?: string} | Array<{position: string; description: string; warning?: string}> | null;
 
@@ -162,13 +200,20 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '桃花': [{
     name: '桃花',
     check: (b) => {
-      const taohuaMap: Record<string, string> = { '子': '酉', '午': '卯', '卯': '子', '酉': '午' };
-      const dayZhi = b.day?.zhi;
-      if (!dayZhi || !taohuaMap[dayZhi]) return null;
-      const target = taohuaMap[dayZhi];
+      // B类：按年支或日支的三合局查
+      const sanHeTaohua: Record<string, string> = {
+        'shui': '酉', 'huo': '卯', 'jin': '午', 'mu': '子'
+      };
+      const yearGroup = getSanHeGroup(b.year?.zhi);
+      const dayGroup = getSanHeGroup(b.day?.zhi);
+      const targets: string[] = [];
+      if (yearGroup && sanHeTaohua[yearGroup]) targets.push(sanHeTaohua[yearGroup]);
+      if (dayGroup && sanHeTaohua[dayGroup]) targets.push(sanHeTaohua[dayGroup]);
+      const uniqueTargets = [...new Set(targets)];
+      if (uniqueTargets.length === 0) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
-        if (b[p]?.zhi === target) {
+        if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
           return { position: posLabel(p), description: '人缘不差——但有些缘分靠近时，先看清再伸手', warning: '' };
         }
       }
@@ -218,6 +263,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '咸池': [{
     name: '咸池',
     check: (b) => {
+      // D类变体项：按现有实现（月支查）
       const map: Record<string, string> = { '寅': '卯', '午': '酉', '戌': '卯', '巳': '申', '酉': '寅', '丑': '申', '申': '卯', '子': '酉', '辰': '卯', '亥': '寅' };
       const monthZhi = b.month?.zhi;
       if (!monthZhi || !map[monthZhi]) return null;
@@ -236,10 +282,20 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '驿马': [{
     name: '驿马',
     check: (b) => {
-      const yimaZhi = ['寅', '申', '巳', '亥'];
+      // B类：按年支或日支的三合局查
+      const sanHeYima: Record<string, string> = {
+        'shui': '寅', 'huo': '申', 'jin': '亥', 'mu': '巳'
+      };
+      const yearGroup = getSanHeGroup(b.year?.zhi);
+      const dayGroup = getSanHeGroup(b.day?.zhi);
+      const targets: string[] = [];
+      if (yearGroup && sanHeYima[yearGroup]) targets.push(sanHeYima[yearGroup]);
+      if (dayGroup && sanHeYima[dayGroup]) targets.push(sanHeYima[dayGroup]);
+      const uniqueTargets = [...new Set(targets)];
+      if (uniqueTargets.length === 0) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
-        if (b[p]?.zhi && yimaZhi.includes(b[p].zhi)) {
+        if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
           return { position: posLabel(p), description: '待不住，总想动', warning: '' };
         }
       }
@@ -249,13 +305,20 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '将星': [{
     name: '将星',
     check: (b) => {
-      const map: Record<string, string> = { '寅': '午', '午': '午', '戌': '午', '亥': '卯', '卯': '卯', '未': '卯', '申': '子', '子': '子', '辰': '子', '巳': '酉', '酉': '酉', '丑': '酉' };
-      const monthZhi = b.month?.zhi;
-      if (!monthZhi || !map[monthZhi]) return null;
-      const target = map[monthZhi];
+      // B类：按年支或日支的三合局查
+      const sanHeJiangXing: Record<string, string> = {
+        'shui': '子', 'huo': '午', 'jin': '酉', 'mu': '卯'
+      };
+      const yearGroup = getSanHeGroup(b.year?.zhi);
+      const dayGroup = getSanHeGroup(b.day?.zhi);
+      const targets: string[] = [];
+      if (yearGroup && sanHeJiangXing[yearGroup]) targets.push(sanHeJiangXing[yearGroup]);
+      if (dayGroup && sanHeJiangXing[dayGroup]) targets.push(sanHeJiangXing[dayGroup]);
+      const uniqueTargets = [...new Set(targets)];
+      if (uniqueTargets.length === 0) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
-        if (b[p]?.zhi === target) {
+        if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
           return { position: posLabel(p), description: '做事有章法，能扛事，别人容易信你', warning: '' };
         }
       }
@@ -286,13 +349,20 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '华盖': [{
     name: '华盖',
     check: (b) => {
-      const huagaiMap: Record<string, string> = { '子': '辰', '丑': '丑', '寅': '戌', '卯': '未', '辰': '辰', '巳': '丑', '午': '戌', '未': '未', '申': '辰', '酉': '丑', '戌': '戌', '亥': '未' };
-      const dayZhi = b.day?.zhi;
-      if (!dayZhi || !huagaiMap[dayZhi]) return null;
-      const target = huagaiMap[dayZhi];
+      // B类：按年支或日支的三合局查
+      const sanHeHuagai: Record<string, string> = {
+        'shui': '辰', 'huo': '戌', 'jin': '丑', 'mu': '未'
+      };
+      const yearGroup = getSanHeGroup(b.year?.zhi);
+      const dayGroup = getSanHeGroup(b.day?.zhi);
+      const targets: string[] = [];
+      if (yearGroup && sanHeHuagai[yearGroup]) targets.push(sanHeHuagai[yearGroup]);
+      if (dayGroup && sanHeHuagai[dayGroup]) targets.push(sanHeHuagai[dayGroup]);
+      const uniqueTargets = [...new Set(targets)];
+      if (uniqueTargets.length === 0) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
-        if (b[p]?.zhi === target) {
+        if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
           return { position: posLabel(p), description: '喜欢独处，人多的时候反而有点收', warning: '' };
         }
       }
@@ -356,35 +426,28 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '空亡': [{
     name: '空亡',
     check: (b) => {
-      const zhiOrder = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-      const ganOrder = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+      // C类：按日柱所在六十甲子旬定空亡二支
       const dayGan = b.day?.gan;
       const dayZhi = b.day?.zhi;
       if (!dayGan || !dayZhi) return null;
-      const ganIdx = ganOrder.indexOf(dayGan);
-      const zhiIdx = zhiOrder.indexOf(dayZhi);
-      const offset = (zhiIdx - ganIdx + 12) % 12;
-      const kongWangZhi: string[] = [];
-      for (let i = 0; i < 2; i++) {
-        const idx = (offset + i) % 12;
-        kongWangZhi.push(zhiOrder[idx]);
-      }
+      const kongWangZhi = getXunKong(dayGan, dayZhi);
+      if (kongWangZhi.length === 0) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
+      const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi && kongWangZhi.includes(b[p].zhi)) {
-          return { position: posLabel(p), description: '有些事看着近，实际上落不到实处，别太较真', warning: '⚠️' };
+          results.push({ position: posLabel(p), description: '有些事看着近，实际上落不到实处，别太较真', warning: '⚠️' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '羊刃': [{
     name: '羊刃',
     check: (b) => {
+      // A类：按日干查（仅阳干有羊刃）
       const map: Record<string, string> = {
-        '甲': '卯', '乙': '寅', '丙': '午', '丁': '巳',
-        '戊': '午', '己': '巳', '庚': '酉', '辛': '申',
-        '壬': '子', '癸': '亥'
+        '甲': '卯', '丙': '午', '戊': '午', '庚': '酉', '壬': '子'
       };
       const target = map[b.day?.gan];
       if (!target) return null;
@@ -411,6 +474,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '亡神': [{
     name: '亡神',
     check: (b) => {
+      // D类变体项：按现有实现（月支三合局查）
       const map: Record<string, string> = { '寅': '巳', '午': '巳', '戌': '巳', '亥': '寅', '卯': '寅', '未': '寅', '申': '亥', '子': '亥', '辰': '亥', '巳': '申', '酉': '申', '丑': '申' };
       const monthZhi = b.month?.zhi;
       if (!monthZhi || !map[monthZhi]) return null;
@@ -427,13 +491,20 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
   '劫煞': [{
     name: '劫煞',
     check: (b) => {
-      const map: Record<string, string> = { '寅': '亥', '午': '亥', '戌': '亥', '申': '巳', '子': '巳', '辰': '巳', '亥': '申', '卯': '申', '未': '申', '巳': '寅', '酉': '寅', '丑': '寅' };
-      const monthZhi = b.month?.zhi;
-      if (!monthZhi || !map[monthZhi]) return null;
-      const target = map[monthZhi];
+      // B类：按年支或日支的三合局查
+      const sanHeJieSha: Record<string, string> = {
+        'shui': '巳', 'huo': '亥', 'jin': '寅', 'mu': '申'
+      };
+      const yearGroup = getSanHeGroup(b.year?.zhi);
+      const dayGroup = getSanHeGroup(b.day?.zhi);
+      const targets: string[] = [];
+      if (yearGroup && sanHeJieSha[yearGroup]) targets.push(sanHeJieSha[yearGroup]);
+      if (dayGroup && sanHeJieSha[dayGroup]) targets.push(sanHeJieSha[dayGroup]);
+      const uniqueTargets = [...new Set(targets)];
+      if (uniqueTargets.length === 0) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
-        if (b[p]?.zhi === target) {
+        if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
           return { position: posLabel(p), description: '做事容易起急，有时候会被人截胡', warning: '⚠️' };
         }
       }
