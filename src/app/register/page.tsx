@@ -136,12 +136,14 @@ export default function RegisterPage() {
 
     let bazi
     try {
-      bazi = calculateBazi(year, month, day, effectiveHour, effectiveMinute, formData.is_lunar)
+      // 防御：确保 hour/minute 是有效数字
+      const safeHour = (effectiveHour !== null && effectiveHour !== undefined && !isNaN(effectiveHour)) ? Math.max(0, Math.min(23, Math.floor(effectiveHour))) : null
+      const safeMinute = (effectiveMinute !== null && effectiveMinute !== undefined && !isNaN(effectiveMinute)) ? Math.max(0, Math.min(59, Math.round(effectiveMinute))) : 0
+      bazi = calculateBazi(year, month, day, safeHour, safeMinute, formData.is_lunar)
     } catch (err) {
       console.error('八字计算失败:', err)
       const msg = err instanceof Error ? err.message : String(err)
       console.error('详细错误:', msg)
-      // 常见原因：日期越界、时辰无效、lunar-javascript内部异常
       alert('出生信息有误：' + (msg.length > 50 ? '请检查日期和时辰' : msg))
       setLoading(false)
       return
