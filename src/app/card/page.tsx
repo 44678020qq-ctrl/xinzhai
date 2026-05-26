@@ -635,8 +635,22 @@ export default function CardPage() {
       } catch {}
       setLoading(false); router.push("/register");
     };
-    loadData().catch(err => { console.error(err); setLoading(false); });
+    loadData().catch(err => { console.error('card loadData fatal:', err); setLoading(false); });
   }, [router]);
+
+  // 渲染阶段防御：如果 card 或 bazi 缺失关键字段，不崩溃
+  if (!card || !bazi) {
+    if (!loading) {
+      return (
+        <main className="min-h-screen flex flex-col items-center justify-center bg-bg px-6">
+          <p className="text-sub mb-4">命签数据加载异常</p>
+          <button onClick={() => { sessionStorage.removeItem('xinzhai_birth'); router.push('/register'); }} className="px-4 py-2 rounded-xl bg-accent text-white">
+            重新注册
+          </button>
+        </main>
+      );
+    }
+  }
 
   if (loading) {
     return (
