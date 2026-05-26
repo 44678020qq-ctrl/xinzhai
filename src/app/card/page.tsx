@@ -661,6 +661,31 @@ export default function CardPage() {
   const pillars = [bazi.year, bazi.month, bazi.day, bazi.hour];
   const groupedShenSha = card.shenSha ? groupShenSha(card.shenSha) : [];
 
+  // 兜底：如果其他数据有了但神煞为空，静默补充
+  useEffect(() => {
+    if (card && bazi && (!card.shenSha || card.shenSha.length === 0)) {
+      const raw = sessionStorage.getItem("xinzhai_birth");
+      if (!raw) return;
+      let form;
+      try { form = JSON.parse(raw); } catch { return; }
+      fetch("/api/generate-card", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          birth_year: form.birth_year, birth_month: form.birth_month,
+          birth_day: form.birth_day, birth_hour: form.birth_hour,
+          birth_minute: form.birth_minute, gender: form.gender,
+        }),
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.card?.shenSha?.length > 0) {
+            setCard(prev => prev ? { ...prev, shenSha: d.card.shenSha } : prev);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [card, bazi]); // eslint-disable-line
+
   return (
     <>
       {/* 开卡揭示浮层 */}
