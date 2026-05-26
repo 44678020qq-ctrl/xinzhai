@@ -68,12 +68,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       };
       const targets = guirenMap[b.day?.gan] || [];
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi && targets.includes(b[p].zhi)) {
-          return { position: posLabel(p), description: '有时会遇到帮你的人，挺自然的', warning: '' };
+          results.push({ position: posLabel(p), description: '有时会遇到帮你的人，挺自然的', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '太极贵人': [{
@@ -94,15 +95,16 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
         { gan: ['壬', '癸'], zhi: '申' },
       ];
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const rule of rules) {
         if (!rule.gan.includes(b.day?.gan)) continue;
         for (const p of positions) {
           if (b[p]?.zhi === rule.zhi) {
-            return { position: posLabel(p), description: '对抽象的事有兴趣，喜欢琢磨道理', warning: '' };
+            results.push({ position: posLabel(p), description: '对抽象的事有兴趣，喜欢琢磨道理', warning: '' });
           }
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '福星贵人': [{
@@ -121,15 +123,16 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
         { gan: '癸', zhi: '卯' }, { gan: '癸', zhi: '寅' },
       ];
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const rule of rules) {
         if (b.day?.gan !== rule.gan) continue;
         for (const p of positions) {
           if (b[p]?.zhi === rule.zhi) {
-            return { position: posLabel(p), description: '底子不差，平时有人照应', warning: '' };
+            results.push({ position: posLabel(p), description: '底子不差，平时有人照应', warning: '' });
           }
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '文昌': [{
@@ -143,12 +146,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = wenchangMap[b.day?.gan];
       if (!target) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '你有一条偏内走的思路——不追热闹，但自己想得深、说得清', warning: '' };
+          results.push({ position: posLabel(p), description: '你有一条偏内走的思路——不追热闹，但自己想得深、说得清', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '天德贵人': [{
@@ -165,12 +169,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = map[monthZhi];
       if (!target) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.gan === target) {
-          return { position: posLabel(p), description: '关键时刻容易有转机，不顺的时候也有人拉一把', warning: '' };
+          results.push({ position: posLabel(p), description: '关键时刻容易有转机，不顺的时候也有人拉一把', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '月德贵人': [{
@@ -187,12 +192,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = map[monthZhi];
       if (!target) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.gan === target) {
-          return { position: posLabel(p), description: '平时运气不算差，遇事有人帮衬', warning: '' };
+          results.push({ position: posLabel(p), description: '平时运气不算差，遇事有人帮衬', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
 
@@ -215,6 +221,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       }
       
       // 日支同理
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       if (dayZhi) {
         if (['亥', '卯', '未'].includes(dayZhi)) targets.push('子');
         if (['寅', '午', '戌'].includes(dayZhi)) targets.push('卯');
@@ -229,10 +236,10 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
-          return { position: posLabel(p), description: '人缘不差——但有些缘分靠近时，先看清再伸手', warning: '' };
+          results.push({ position: posLabel(p), description: '人缘不差——但有些缘分靠近时，先看清再伸手', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '红鸾': [{
@@ -247,12 +254,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       if (!dayZhi || !map[dayZhi]) return null;
       const target = map[dayZhi];
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '感情上容易遇到合拍的人，相处起来不累', warning: '' };
+          results.push({ position: posLabel(p), description: '感情上容易遇到合拍的人，相处起来不累', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '天喜': [{
@@ -267,12 +275,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       if (!dayZhi || !map[dayZhi]) return null;
       const target = map[dayZhi];
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '喜庆的事容易赶上，比如聚会、婚礼、好消息', warning: '' };
+          results.push({ position: posLabel(p), description: '喜庆的事容易赶上，比如聚会、婚礼、好消息', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '咸池': [{
@@ -283,13 +292,14 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const monthZhi = b.month?.zhi;
       if (!monthZhi || !map[monthZhi]) return null;
       const target = map[monthZhi];
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '对人有吸引力，但也容易陷进去，要留神', warning: '⚠️' };
+          results.push({ position: posLabel(p), description: '对人有吸引力，但也容易陷进去，要留神', warning: '⚠️' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
 
@@ -318,14 +328,15 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       
       const uniqueTargets = [...new Set(targets)];
       if (uniqueTargets.length === 0) return null;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
-          return { position: posLabel(p), description: '待不住，总想动', warning: '' };
+          results.push({ position: posLabel(p), description: '待不住，总想动', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '将星': [{
@@ -352,14 +363,15 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       
       const uniqueTargets = [...new Set(targets)];
       if (uniqueTargets.length === 0) return null;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
-          return { position: posLabel(p), description: '做事有章法，能扛事，别人容易信你', warning: '' };
+          results.push({ position: posLabel(p), description: '做事有章法，能扛事，别人容易信你', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '禄神': [{
@@ -373,12 +385,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = map[b.day?.gan];
       if (!target) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '有稳定的收入来源，不至于太慌', warning: '' };
+          results.push({ position: posLabel(p), description: '有稳定的收入来源，不至于太慌', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
 
@@ -401,6 +414,7 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       // 年支/日支属申子辰局→华盖在辰
       if (yearZhi && ['申', '子', '辰'].includes(yearZhi)) targets.push('辰');
       if (dayZhi && ['申', '子', '辰'].includes(dayZhi)) targets.push('辰');
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       // 年支/日支属巳酉丑局→华盖在丑
       if (yearZhi && ['巳', '酉', '丑'].includes(yearZhi)) targets.push('丑');
       if (dayZhi && ['巳', '酉', '丑'].includes(dayZhi)) targets.push('丑');
@@ -412,10 +426,10 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
-          return { position: posLabel(p), description: '喜欢独处，人多的时候反而有点收', warning: '' };
+          results.push({ position: posLabel(p), description: '喜欢独处，人多的时候反而有点收', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '魁罡': [{
@@ -451,12 +465,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = map[b.day?.gan];
       if (!target) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '出行运气不差，坐车坐船少折腾', warning: '' };
+          results.push({ position: posLabel(p), description: '出行运气不差，坐车坐船少折腾', warning: '' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '八专': [{
@@ -500,13 +515,14 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       };
       const target = map[b.day?.gan];
       if (!target) return null;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '脾气上来的时候有点猛，说完容易后悔', warning: '⚠️' };
+          results.push({ position: posLabel(p), description: '脾气上来的时候有点猛，说完容易后悔', warning: '⚠️' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '十恶大败': [{
@@ -528,13 +544,14 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const monthZhi = b.month?.zhi;
       if (!monthZhi || !map[monthZhi]) return null;
       const target = map[monthZhi];
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '心思深，有些事不想让人看透', warning: '⚠️' };
+          results.push({ position: posLabel(p), description: '心思深，有些事不想让人看透', warning: '⚠️' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '劫煞': [{
@@ -561,14 +578,15 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       
       const uniqueTargets = [...new Set(targets)];
       if (uniqueTargets.length === 0) return null;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       
       const positions = ['year', 'month', 'day', 'hour'] as const;
       for (const p of positions) {
         if (b[p]?.zhi && uniqueTargets.includes(b[p].zhi)) {
-          return { position: posLabel(p), description: '做事容易起急，有时候会被人截胡', warning: '⚠️' };
+          results.push({ position: posLabel(p), description: '做事容易起急，有时候会被人截胡', warning: '⚠️' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '吊客': [{
@@ -579,12 +597,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       if (!yearZhi || !map[yearZhi]) return null;
       const target = map[yearZhi];
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '那段时间心情容易低落，少去丧气的地方', warning: '⚠️' };
+          results.push({ position: posLabel(p), description: '那段时间心情容易低落，少去丧气的地方', warning: '⚠️' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '病符': [{
@@ -595,12 +614,13 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       if (!yearZhi || !map[yearZhi]) return null;
       const target = map[yearZhi];
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { position: posLabel(p), description: '那阵子身体容易出小毛病，多休息，别硬撑', warning: '⚠️' };
+          results.push({ position: posLabel(p), description: '那阵子身体容易出小毛病，多休息，别硬撑', warning: '⚠️' });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
   '四废': [{
@@ -689,16 +709,17 @@ const SHEN_SHA_TABLE: Record<string, Array<{name: string; check: (bazi: any) => 
       const target = xueRenMap[b.day?.gan];
       if (!target) return null;
       const positions = ['year', 'month', 'day', 'hour'] as const;
+        const results: Array<{position: string; description: string; warning?: string}> = [];
       for (const p of positions) {
         if (b[p]?.zhi === target) {
-          return { 
-            position: posLabel(p), 
-            description: '你骨子里有股不服输的劲——关键时刻能爆发出超乎寻常的能量。', 
-            warning: '⚠️' 
-          };
+          results.push({ 
+                        position: posLabel(p), 
+                        description: '你骨子里有股不服输的劲——关键时刻能爆发出超乎寻常的能量。', 
+                        warning: '⚠️' 
+                      });
         }
       }
-      return null;
+      return results.length > 0 ? results : null;
     }
   }],
 };
@@ -783,11 +804,12 @@ function getTiaoHou(dayGan: string, monthZhi: string): { coreNeed: string[]; rea
 
 // 计算神煞
 // check 可以返回单个对象或数组（数组支持多柱命中，如德秀贵人）
-function calcShenSha(bazi: any): Array<{name: string; position: string; description: string; warning?: string}> {
-  const result: Array<{name: string; position: string; description: string; warning?: string}> = [];
+function calcShenSha(bazi: any): Array<{name: string; position: string | string[]; description: string; warning?: string}> {
+  const result: Array<{name: string; position: string | string[]; description: string; warning?: string}> = [];
   for (const [, checks] of Object.entries(SHEN_SHA_TABLE)) {
     for (const c of checks) {
       const r = c.check(bazi);
+      if (!r) continue;
       if (!r) continue;
       if (Array.isArray(r)) {
         for (const item of r) {
