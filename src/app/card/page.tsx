@@ -602,6 +602,7 @@ export default function CardPage() {
   const [loading, setLoading] = useState(true);
   const [engine, setEngine] = useState<string>("");
   const [revealTarget, setRevealTarget] = useState<{name: string; svgIcon: string; rarity: RarityTier; position: string; description: string; warning?: string} | null>(null);
+  const [viewMode, setViewMode] = useState<'energy' | 'professional'>('energy');
 
   useEffect(() => {
     const loadData = async () => {
@@ -758,7 +759,26 @@ export default function CardPage() {
             <h2 className="text-xl font-semibold text-ink">我的能量名片</h2>
           </div>
 
-          {/* 白色卡片主体 */}
+          {/* 视图切换 */}
+          <div className="flex justify-center">
+            <div className="inline-flex rounded-2xl bg-bg/80 border border-line/50 p-1">
+              <button
+                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${viewMode === 'energy' ? 'bg-accent text-white shadow-sm' : 'text-sub hover:text-ink'}`}
+                onClick={() => setViewMode('energy')}
+              >
+                能量
+              </button>
+              <button
+                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${viewMode === 'professional' ? 'bg-accent text-white shadow-sm' : 'text-sub hover:text-ink'}`}
+                onClick={() => setViewMode('professional')}
+              >
+                专业盘
+              </button>
+            </div>
+          </div>
+
+          {/* 白色卡片主体 - 能量视图 */}
+          {viewMode === 'energy' && (
           <div className="bg-card rounded-2xl shadow-sm border border-line/50 p-6 flex flex-col gap-5">
 
             {/* 日主 */}
@@ -934,6 +954,14 @@ export default function CardPage() {
               <p className="text-xs text-sub leading-relaxed text-center">{card.summary}</p>
             )}
           </div>
+          )}
+
+          {/* 专业盘视图 */}
+          {viewMode === 'professional' && (
+            <div className="bg-card rounded-2xl shadow-sm border border-line/50 p-6 flex flex-col gap-5">
+              <div className="text-center text-ink">专业盘视图 - 实现中...</div>
+            </div>
+          )}
 
           {/* 操作按钮 */}
           <div className="flex flex-col gap-3">
