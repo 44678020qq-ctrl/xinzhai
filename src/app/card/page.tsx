@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { InkMark } from "@/components/InkMark";
+import { calcShenSha as calcShenShaLocal } from "@/lib/shensha";
 
 // ============ 常量 ============
 const WX_COLOR: Record<string, string> = {
@@ -87,7 +88,7 @@ const ALL_SHENSHA_NAMES = [
 ];
 
 // ============ 稀有度系统 ============
-type RarityTier = 'legendary4' | 'legendary3' | 'epic' | 'rare' | 'common' | 'tidal';
+type RarityTier = 'legendary4' | 'legendary3' | 'epic' | 'rare' | 'common' | 'normal' | 'tidal';
 
 interface RarityConfig {
   label: string;
@@ -130,6 +131,12 @@ const RARITY: Record<RarityTier, RarityConfig> = {
     bgClass: 'bg-gradient-to-br from-gray-100 to-gray-50',
     burstColor: '#9CA3AF', tier: 2,
   },
+  normal: {
+    label: '普通', labelColor: '#6B7280',
+    borderColor: '#9CA3AF', glowColor: '#9CA3AF',
+    bgClass: 'bg-gradient-to-br from-gray-100 to-gray-50',
+    burstColor: '#9CA3AF', tier: 2,
+  },
   tidal: {
     label: '潮汐', labelColor: '#0E7490',
     borderColor: '#22D3EE', glowColor: '#06B6D4',
@@ -138,25 +145,87 @@ const RARITY: Record<RarityTier, RarityConfig> = {
   },
 };
 
+// 神煞固定稀有度映射（v0.1 指挥草案）
+// 稀有度 = 神煞自带属性，与出现柱数无关；柱数只做 ·N柱 角标
+const SHENSHA_RARITY: Record<string, RarityTier> = {
+  // golden — 最尊贵·罕见吉神
+  '天乙贵人': 'legendary4',
+  '天德贵人': 'legendary4',
+  '月德贵人': 'legendary4',
+  '三奇贵人': 'legendary4',
+  // legend
+  '德秀贵人': 'legendary3',
+  '太极贵人': 'legendary3',
+  '福星贵人': 'legendary3',
+  '天德合': 'legendary3',
+  '月德合': 'legendary3',
+  '国印贵人': 'legendary3',
+  '国印': 'legendary3',
+  // epic
+  '文昌贵人': 'epic',
+  '天厨贵人': 'epic',
+  '金舆': 'epic',
+  '将星': 'epic',
+  '学堂': 'epic',
+  '词馆': 'epic',
+  '天医': 'epic',
+  '六秀日': 'epic',
+  '十灵日': 'epic',
+  '拱禄': 'epic',
+  // rare
+  '禄神': 'rare',
+  '红鸾': 'rare',
+  '天喜': 'rare',
+  '红艳煞': 'rare',
+  '华盖': 'rare',
+  // normal
+  '驿马': 'normal',
+  '桃花': 'normal',
+  '咸池': 'normal',
+  '八专': 'normal',
+  // tide — 凶/中性
+  '空亡': 'tidal',
+  '孤鸾煞': 'tidal',
+  '孤辰': 'tidal',
+  '寡宿': 'tidal',
+  '童子煞': 'tidal',
+  '吊客': 'tidal',
+  '丧门': 'tidal',
+  '披麻': 'tidal',
+  '羊刃': 'tidal',
+  '血刃': 'tidal',
+  '飞刃': 'tidal',
+  '劫煞': 'tidal',
+  '灾煞': 'tidal',
+  '亡神': 'tidal',
+  '勾绞煞': 'tidal',
+  '阴差阳错': 'tidal',
+  '九丑': 'tidal',
+  '元辰': 'tidal',
+  '天罗地网': 'tidal',
+};
+
 function getRarity(
-  name: string, count: number, isWarning: boolean
+  name: string, _count: number, isWarning: boolean
 ): RarityTier {
   if (isWarning) return 'tidal';
-  if (count >= 4) return 'legendary4';
-  if (count === 3) return 'legendary3';
-  if (count === 2) return 'epic';
-  return 'common';
+  return SHENSHA_RARITY[name] || 'common';
 }
 
 // ============ 分组神煞 ============
-function groupShenSha(shenSha: Array<{name: string; position: string; description: string; warning?: string}>) {
+// 支持 position 为 string 或 string[]（多柱位命中）
+function groupShenSha(shenSha: Array<{name: string; position: string | string[]; description: string; warning?: string}>) {
   const grouped: Record<string, {name: string; positions: string[]; description: string; warning?: string}> = {};
   for (const s of shenSha) {
     if (!grouped[s.name]) {
       grouped[s.name] = { name: s.name, positions: [], description: s.description, warning: s.warning };
     }
-    if (!grouped[s.name].positions.includes(s.position)) {
-      grouped[s.name].positions.push(s.position);
+    // 统一处理单柱或多柱
+    const positions = Array.isArray(s.position) ? s.position : [s.position];
+    for (const pos of positions) {
+      if (!grouped[s.name].positions.includes(pos)) {
+        grouped[s.name].positions.push(pos);
+      }
     }
   }
   return Object.values(grouped);
@@ -506,7 +575,7 @@ interface CardData {
     reason: string;
   };
   wuxingStrength?: Record<string, number>;
-  shenSha?: Array<{name: string; position: string; description: string; warning?: string}>;
+  shenSha?: Array<{name: string; position: string | string[]; description: string; warning?: string}>;
   tiaoHou?: { coreNeed: string[]; reason: string; avoid: string[] };
 }
 interface BaziResult {
@@ -577,9 +646,7 @@ export default function CardPage() {
                 strength: { level: a.day_master_strength || '中和', score: scoreNorm, deLing, deDi, deSheng, deZhu: deSheng },
                 yongShen: { yongShen: yongEls, xiShen: xiEls, jiShen: jiEls, reason: yongReason },
                 wuxingStrength: wxNorm,
-                shenSha: (a.shen_sha || []).map((s: {name: string; position: string; description: string; warning?: string}) => ({
-                  name: s.name, position: s.position, description: s.description, warning: s.warning,
-                })),
+                shenSha: calcShenShaLocal({ year: { gan: pillars[0]?.gan || '?', zhi: pillars[0]?.zhi || '?' }, month: { gan: pillars[1]?.gan || '?', zhi: pillars[1]?.zhi || '?' }, day: { gan: pillars[2]?.gan || '?', zhi: pillars[2]?.zhi || '?' }, hour: pillars[3] ? { gan: pillars[3].gan, zhi: pillars[3].zhi } : undefined }),
                 tiaoHou: a.tiao_hou ? { coreNeed: a.tiao_hou.core_need || [], reason: a.tiao_hou.reason || '', avoid: a.tiao_hou.avoid || [] } : undefined,
               };
               const baziResult: BaziResult = {
@@ -588,23 +655,7 @@ export default function CardPage() {
                 day: pillars[2] || { gan: '?', zhi: '?', wuxing_gan: '' },
                 hour: pillars[3] || undefined,
               };
-              // 始终用 TS 引擎补充神煞（TS引擎覆盖29种，Python引擎可能缺失）
-              try {
-                const tsRes = await fetch("/api/generate-card", {
-                  method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    birth_year: form.birth_year, birth_month: form.birth_month,
-                    birth_day: form.birth_day, birth_hour: form.birth_hour,
-                    birth_minute: form.birth_minute, gender: form.gender,
-                  }),
-                });
-                if (tsRes.ok) {
-                  const tsData = await tsRes.json();
-                  if (tsData.card?.shenSha && tsData.card.shenSha.length > 0) {
-                    cardData.shenSha = tsData.card.shenSha;
-                  }
-                }
-              } catch (e) { /* silent */ }
+              // 神煞已由本地 calcShenSha 计算，无需 TS 引擎补充
               setCard(cardData); setBazi(baziResult); setEngine("python"); setLoading(false); return;
             }
           }
@@ -652,6 +703,10 @@ export default function CardPage() {
     }
   }
 
+  // 神煞数据：本地计算，单一来源
+  const rawShenSha = card?.shenSha;
+  const groupedShenSha = rawShenSha && rawShenSha.length > 0 ? groupShenSha(rawShenSha) : [];
+
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-bg page-in">
@@ -673,38 +728,6 @@ export default function CardPage() {
 
   const wxEntries = card.wuxingStrength ? Object.entries(card.wuxingStrength) : [];
   const pillars = [bazi.year, bazi.month, bazi.day, bazi.hour];
-  // 神煞数据：确保始终有值（多层兜底）
-  const rawShenSha = card?.shenSha;
-  const groupedShenSha = rawShenSha && rawShenSha.length > 0 ? groupShenSha(rawShenSha) : [];
-
-  // 兜底：如果其他数据有了但神煞为空/缺失，静默补充（用ref避免重复触发）
-  const shenShaFetchedRef = useRef(false);
-  useEffect(() => {
-    if (card && bazi && (!rawShenSha || rawShenSha.length === 0) && !shenShaFetchedRef.current) {
-      shenShaFetchedRef.current = true;
-      const raw = sessionStorage.getItem("xinzhai_birth");
-      if (!raw) { shenShaFetchedRef.current = false; return; }
-      let form;
-      try { form = JSON.parse(raw); } catch { shenShaFetchedRef.current = false; return; }
-      fetch("/api/generate-card", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          birth_year: form.birth_year, birth_month: form.birth_month,
-          birth_day: form.birth_day, birth_hour: form.birth_hour,
-          birth_minute: form.birth_minute, gender: form.gender,
-        }),
-      })
-        .then(r => r.json())
-        .then(d => {
-          if (d.card?.shenSha?.length > 0) {
-            setCard(prev => prev ? { ...prev, shenSha: d.card.shenSha } : prev);
-          } else {
-            shenShaFetchedRef.current = false; // 允许重试
-          }
-        })
-        .catch(() => { shenShaFetchedRef.current = false; });
-    }
-  }, [card, bazi, rawShenSha]); // eslint-disable-line
 
   return (
     <>
