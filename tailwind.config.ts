@@ -35,6 +35,8 @@ const config: Config = {
       fontFamily: {
         sans: ["Noto Serif SC", "STSong", "Georgia", "serif"],
         mono: ["JetBrains Mono", "monospace"],
+        inter: ["Inter", "system-ui", "sans-serif"],
+        serif: ["Noto Serif SC", "STSong", "Georgia", "serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.8s ease-out",
@@ -60,3 +62,6 @@ const config: Config = {
   plugins: [require("@tailwindcss/typography")],
 };
 export default config;
+
+// ============ 心斋扩展配置 ============
+// Inter font for numbers

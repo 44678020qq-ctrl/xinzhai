@@ -49,6 +49,14 @@ function getDayOfYear(year: number, month: number, day: number): number {
   return dayOfYear;
 }
 
+function isValidBirthDate(year: number, month: number, day: number): boolean {
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
+  if (year < 1900 || month < 1 || month > 12 || day < 1) return false;
+  const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1];
+}
+
 function getShichenName(hour: number): string {
   if (hour === 23 || hour === 0) return '子时';
   if (hour >= 1 && hour < 3) return '丑时';
@@ -128,7 +136,7 @@ export default function RegisterPage() {
     const year = parseInt(formData.birth_year)
     const month = parseInt(formData.birth_month)
     const day = parseInt(formData.birth_day)
-    if (isNaN(year) || isNaN(month) || isNaN(day) || year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
+    if (!isValidBirthDate(year, month, day)) {
       alert('请填写有效的出生日期')
       setLoading(false)
       return
@@ -149,52 +157,68 @@ export default function RegisterPage() {
       return
     }
 
-    try {
-      let { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        const { data, error } = await supabase.auth.signInAnonymously()
-        if (error) throw error
-        user = data.user
-      }
-
-      await supabase.from('user_profiles').insert({
-        id: user?.id,
-        name: formData.name || null,
-        gender: formData.gender || null,
-        birth_year: parseInt(formData.birth_year),
-        birth_month: parseInt(formData.birth_month),
-        birth_day: parseInt(formData.birth_day),
-        birth_hour: hour,
-        birth_minute: minute,
-        is_lunar: formData.is_lunar,
-        bazi_year_gan: bazi.year.gan,
-        bazi_year_zhi: bazi.year.zhi,
-        bazi_month_gan: bazi.month.gan,
-        bazi_month_zhi: bazi.month.zhi,
-        bazi_day_gan: bazi.day.gan,
-        bazi_day_zhi: bazi.day.zhi,
-        bazi_hour_gan: bazi.hour?.gan || null,
-        bazi_hour_zhi: bazi.hour?.zhi || null,
-        day_master_wuxing: bazi.day.wuxing_gan,
-        personality_tags: [],
-        updated_at: new Date().toISOString()
-      })
-    } catch (error) {
-      console.warn('Supabase 失败，降级本地模式:', error)
-    }
-
-    sessionStorage.setItem('xinzhai_birth', JSON.stringify(birthData))
     const strength = judgeStrength(bazi)
     const yongShen = findYongShen(bazi)
-    sessionStorage.setItem('xinzhai_bazi', JSON.stringify({
-      dayMaster: bazi.day.wuxing_gan,
-      dayMasterGan: bazi.dayGan,
-      strength,
-      yongShen
-    }))
+    let storedLocally = false
+    try {
+      window.sessionStorage?.setItem('xinzhai_birth', JSON.stringify(birthData))
+      window.sessionStorage?.setItem('xinzhai_bazi', JSON.stringify({
+        dayMaster: bazi.day.wuxing_gan,
+        dayMasterGan: bazi.dayGan,
+        strength,
+        yongShen
+      }))
+      storedLocally = true
+    } catch {
+      storedLocally = false
+    }
 
-    router.push('/card')
+    if (storedLocally) {
+      router.push('/card')
+    } else {
+      const params = new URLSearchParams()
+      Object.entries(birthData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') params.set(key, String(value))
+      })
+      router.push(`/card?${params.toString()}`)
+    }
     setLoading(false)
+
+    void (async () => {
+      try {
+        let { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          const { data, error } = await supabase.auth.signInAnonymously()
+          if (error) throw error
+          user = data.user
+        }
+
+        await supabase.from('user_profiles').insert({
+          id: user?.id,
+          name: formData.name || null,
+          gender: formData.gender || null,
+          birth_year: parseInt(formData.birth_year),
+          birth_month: parseInt(formData.birth_month),
+          birth_day: parseInt(formData.birth_day),
+          birth_hour: hour,
+          birth_minute: minute,
+          is_lunar: formData.is_lunar,
+          bazi_year_gan: bazi.year.gan,
+          bazi_year_zhi: bazi.year.zhi,
+          bazi_month_gan: bazi.month.gan,
+          bazi_month_zhi: bazi.month.zhi,
+          bazi_day_gan: bazi.day.gan,
+          bazi_day_zhi: bazi.day.zhi,
+          bazi_hour_gan: bazi.hour?.gan || null,
+          bazi_hour_zhi: bazi.hour?.zhi || null,
+          day_master_wuxing: bazi.day.wuxing_gan,
+          personality_tags: [],
+          updated_at: new Date().toISOString()
+        })
+      } catch (error) {
+        console.warn('Supabase 失败，降级本地模式:', error)
+      }
+    })()
   }
 
   return (

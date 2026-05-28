@@ -1,16 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import type { PillarDetail, RichBazi } from "@/lib/bazi-rich";
+import { WX_COLOR, getPillarShenSha, TEN_GOD_LABEL } from "@/lib/bazi-rich";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { InkMark } from "@/components/InkMark";
 import WuxingRadarChart from "@/components/WuxingRadarChart";
 import { calcShenSha as calcShenShaLocal } from "@/lib/shensha";
 
-// ============ 常量 ============
-const WX_COLOR: Record<string, string> = {
-  "木": "#9CB89A", "火": "#D88A7A", "土": "#C9A86A", "金": "#B9AE92", "水": "#7AA0C4",
-};
 const PILLAR_LABELS = ['年柱', '月柱', '日柱', '时柱'];
 const MAJOR_AUSPICIOUS = ['天乙贵人', '太极贵人', '福星贵人', '文昌', '天德贵人', '月德贵人', '驿马', '将星', '禄神', '华盖', '金舆', '红鸾', '天喜'];
 
@@ -85,10 +82,6 @@ const SHENSHA_SVG: Record<string, string> = {
   '禄神': makeSealSvg('禄'),
 };
 
-// 兼容旧emoji接口
-const SHENSHA_ICON: Record<string, string> = Object.fromEntries(
-  Object.keys(SHENSHA_SVG).map(k => [k, k])
-);
 const ALL_SHENSHA_NAMES = [
   '天乙贵人', '太极贵人', '福星贵人', '文昌', '天德贵人', '月德贵人',
   '桃花', '红鸾', '天喜', '咸池',
@@ -224,30 +217,82 @@ function getRarity(
 }
 
 // ============ 人话翻译函数 ============
+type EnergyTone = 'strong' | 'balanced' | 'soft';
+
+function getEnergyTone(level?: string): EnergyTone {
+  if (!level) return 'balanced';
+  if (level.includes('旺')) return 'strong';
+  if (level.includes('弱')) return 'soft';
+  return 'balanced';
+}
+
+function getEnergyToneLabel(level?: string): string {
+  const tone = getEnergyTone(level);
+  if (tone === 'strong') return '偏盛';
+  if (tone === 'soft') return '偏柔';
+  return '平衡';
+}
+
+function getEnergyToneColor(level?: string): string {
+  const tone = getEnergyTone(level);
+  if (tone === 'strong') return 'var(--warn)';
+  if (tone === 'soft') return 'var(--danger)';
+  return 'var(--sub)';
+}
+
+function getAiBannerText(level?: string): string {
+  const tone = getEnergyTone(level);
+  if (tone === 'strong') return '你今天适合把节奏放慢一点，先听完，再决定要不要往前推。';
+  if (tone === 'soft') return '你今天需要一个稳定的场域，先把自己安顿好，再去回应外界。';
+  return '你今天的状态比较平稳，适合把注意力放在真正重要的人和事上。';
+}
+
+function getPersonaText(dayType?: string, level?: string): string {
+  const wx = dayType?.slice(-1) || '';
+  const base: Record<string, string> = {
+    木: '有生长感，重视方向和关系里的自然延展。',
+    火: '反应快，容易被真诚和热度点亮。',
+    土: '稳定、有承接力，做事看重长期和安全感。',
+    金: '有标准、有边界，判断里带着清醒和克制。',
+    水: '感受细，适应力强，能读到细微的气氛变化。',
+  };
+  const tone = getEnergyTone(level);
+  const suffix = tone === 'strong'
+    ? '当下能量外放，适合留一点余地。'
+    : tone === 'soft'
+      ? '当下更需要被托住，别急着消耗自己。'
+      : '当下比较均衡，适合稳稳推进。';
+  return `${base[wx] || '有自己的节奏和感受方式。'}${suffix}`;
+}
+
+function getNeedText(elements: string[] = []): string {
+  const unique = Array.from(new Set(elements)).filter(Boolean);
+  if (unique.length === 0) return '靠近让你更安静、更稳定的人和环境。';
+  const map: Record<string, string> = {
+    木: '能让你伸展开、一起成长的人和环境',
+    火: '有热度、有回应、能把气氛点亮的人和环境',
+    土: '稳定、可靠、让事情落地的人和环境',
+    金: '有边界、有标准、说话清楚的人和环境',
+    水: '松弛、流动、允许你慢慢感受的人和环境',
+  };
+  return `更适合靠近${unique.map((el) => map[el] || el).join('、')}。`;
+}
+
 // 旺衰翻人话
 function translateStrength(strength: string): string {
   const map: Record<string, string> = {
-    '旺': '能量充沛，气势如虹',
-    '相': '能量渐长，蓄势待发',
-    '休': '能量平和，静待时机',
-    '囚': '能量受制，需要突破',
-    '死': '能量低谷，韬光养晦',
+    '极旺': '状态很满，适合把速度降一点，给判断留出空间',
+    '偏旺': '状态偏主动，适合先稳住节奏，再向外推进',
+    '中和': '状态比较平稳，适合做长期但不急迫的决定',
+    '偏弱': '状态偏敏感，适合减少消耗，先找回稳定感',
+    '极弱': '状态需要被托住，适合先休整，再处理外界关系',
+    '旺': '状态偏主动，适合先稳住节奏，再向外推进',
+    '相': '状态在回升，适合小步推进',
+    '休': '状态平缓，适合观察和整理',
+    '囚': '状态有点受限，适合先把环境调顺',
+    '死': '状态偏低，适合减少消耗',
   };
   return map[strength] || strength;
-}
-
-// 喜用翻人话
-function translateYongShen(yongShen: string): string {
-  if (!yongShen) return '待定';
-  const elements = yongShen.split(/[,，]/).map(s => s.trim()).filter(Boolean);
-  const wxMap: Record<string, string> = {
-    '木': '🌳 木（生长、舒展）',
-    '火': '🔥 火（热情、光明）',
-    '土': '🏔️ 土（稳重、包容）',
-    '金': '⚔️ 金（果断、锐利）',
-    '水': '💧 水（智慧、流动）',
-  };
-  return elements.map(e => wxMap[e] || e).join('、');
 }
 
 // ============ 分组神煞 ============
@@ -515,80 +560,6 @@ function CardReveal({
   );
 }
 
-// ============ 神煞徽章组件 ============
-function BadgeItem({
-  name, svgIcon, rarity, count, gradient, onClick,
-}: {
-  name: string; svgIcon: string; rarity: RarityTier;
-  count: number; gradient: string;
-  onClick: () => void;
-}) {
-  const cfg = RARITY[rarity];
-  const isWarning = rarity === 'tidal';
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      {/* 徽章 */}
-      <button
-        className="relative rounded-full flex items-center justify-center text-xl transition-all duration-200 active:scale-90"
-        style={{
-          width: '72px',
-          height: '72px',
-          border: `2px solid ${cfg.borderColor}`,
-          background: `linear-gradient(135deg, ${gradient.includes('[') ? '' : ''}var(--tw-gradient-stops))`,
-          boxShadow: `0 4px 20px ${cfg.glowColor}33, 0 0 0 0 ${cfg.glowColor}00`,
-          transition: 'box-shadow 0.3s ease, transform 0.15s ease',
-        }}
-        onClick={onClick}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 4px 30px ${cfg.glowColor}55, 0 0 8px ${cfg.glowColor}33`;
-          (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)';
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 4px 20px ${cfg.glowColor}33`;
-          (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
-        }}
-      >
-        {/* 稀有度流光（金传说） */}
-        {rarity === 'legendary4' && (
-          <div
-            className="absolute inset-0 rounded-full pointer-events-none overflow-hidden"
-            style={{
-              background: 'linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.25) 50%, transparent 100%)',
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 2s linear infinite',
-            }}
-          />
-        )}
-        {/* 凶煞警示环 */}
-        {isWarning && (
-          <div className="absolute -inset-1 rounded-full pointer-events-none" style={{ border: '1.5px dashed #22D3EE44' }} />
-        )}
-        <span className="relative z-10 w-6 h-6" dangerouslySetInnerHTML={{ __html: svgIcon }} />
-        {/* 多柱角标 */}
-        {count > 1 && (
-          <div
-            className="absolute -top-1.5 -right-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-bold text-white"
-            style={{ background: cfg.borderColor, boxShadow: `0 2px 8px ${cfg.glowColor}66` }}
-          >
-            ×{count}
-          </div>
-        )}
-      </button>
-      {/* 名称 */}
-      <span className="text-[10px] font-medium text-ink text-center leading-tight">{name}</span>
-      {/* 稀有度星级 */}
-      {cfg.tier >= 4 && (
-        <div className="flex gap-0.5">
-          {Array.from({ length: cfg.tier - 3 }).map((_, i) => (
-            <span key={i} className="text-[7px]" style={{ color: cfg.borderColor }}>★</span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ============ 主页面 ============
 interface CardData {
   wuxing_personality: string;
@@ -627,6 +598,7 @@ export default function CardPage() {
   const router = useRouter();
   const [card, setCard] = useState<CardData | null>(null);
   const [bazi, setBazi] = useState<BaziResult | null>(null);
+  const [richBazi, setRichBazi] = useState<RichBazi | null>(null);
   const [loading, setLoading] = useState(true);
   const [engine, setEngine] = useState<string>("");
   const [revealTarget, setRevealTarget] = useState<{name: string; svgIcon: string; rarity: RarityTier; position: string; description: string; warning?: string} | null>(null);
@@ -634,16 +606,70 @@ export default function CardPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      const raw = sessionStorage.getItem("xinzhai_birth");
+      let raw: string | null = null;
+      try {
+        raw = window.sessionStorage?.getItem("xinzhai_birth") || null;
+      } catch {
+        raw = null;
+      }
+      let form: {
+        birth_year: string;
+        birth_month: string;
+        birth_day: string;
+        birth_hour?: string;
+        birth_minute?: string;
+        gender?: string;
+        is_lunar?: boolean;
+      } | null = null;
       if (raw) {
-        let form;
         try { form = JSON.parse(raw); } catch (e) {
-          sessionStorage.removeItem("xinzhai_birth");
-          sessionStorage.removeItem("xinzhai_bazi");
+          try {
+            window.sessionStorage?.removeItem("xinzhai_birth");
+            window.sessionStorage?.removeItem("xinzhai_bazi");
+          } catch {}
           router.push("/register");
           setLoading(false); return;
         }
-        // 优先 Python 引擎
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('birth_year') && params.get('birth_month') && params.get('birth_day')) {
+          form = {
+            birth_year: params.get('birth_year') || '',
+            birth_month: params.get('birth_month') || '',
+            birth_day: params.get('birth_day') || '',
+            birth_hour: params.get('birth_hour') || '',
+            birth_minute: params.get('birth_minute') || '',
+            gender: params.get('gender') || 'male',
+            is_lunar: params.get('is_lunar') === 'true',
+          };
+        }
+      }
+      if (form) {
+        // 优先使用 TS 引擎：它会返回完整 richBazi，专业盘和能量视图同源。
+        try {
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), 8000);
+          const res = await fetch("/api/generate-card", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(form),
+            signal: controller.signal,
+          });
+          window.clearTimeout(timeout);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.card && data.bazi) {
+              setCard(data.card);
+              setBazi(data.bazi);
+              if (data.richBazi) setRichBazi(data.richBazi);
+              setEngine("ts");
+              setLoading(false);
+              return;
+            }
+          }
+        } catch {}
+
+        // Python 引擎仅作为降级，避免缺字段导致专业盘出现问号。
         try {
           const pyRes = await fetch("/api/rules/analyze", {
             method: "POST", headers: { "Content-Type": "application/json" },
@@ -695,35 +721,15 @@ export default function CardPage() {
                 hour: pillars[3] || undefined,
               };
               // 神煞已由本地 calcShenSha 计算，无需 TS 引擎补充
-              setCard(cardData); setBazi(baziResult); setEngine("python"); setLoading(false); return;
+              setCard(cardData); setBazi(baziResult);
+              // 尝试从 Python 引擎获取 richBazi（如果 API 已扩展）
+              if (pyData.richBazi) setRichBazi(pyData.richBazi);
+              setEngine("python"); setLoading(false); return;
             }
           }
         } catch (e) { /* silent */ }
-        // Fallback: TS 引擎
-        try {
-          const res = await fetch("/api/generate-card", {
-            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.card && data.bazi) { setCard(data.card); setBazi(data.bazi); setEngine("ts"); setLoading(false); return; }
-          }
-        } catch {}
       }
-      // Supabase
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase.from("user_profiles").select("*").eq("id", user.id).single();
-          if (profile) {
-            const form2 = { birth_year: profile.birth_year, birth_month: profile.birth_month, birth_day: profile.birth_day, birth_hour: profile.birth_hour, birth_minute: profile.birth_minute, gender: profile.gender };
-            const res2 = await fetch("/api/generate-card", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form2) });
-            const data2 = await res2.json();
-            setCard(data2.card); setBazi(data2.bazi); setEngine("ts"); setLoading(false); return;
-          }
-        }
-      } catch {}
-      setLoading(false); router.push("/register");
+      setLoading(false);
     };
     loadData().catch(err => { console.error('card loadData fatal:', err); setLoading(false); });
   }, [router]);
@@ -734,7 +740,7 @@ export default function CardPage() {
       return (
         <main className="min-h-screen flex flex-col items-center justify-center bg-bg px-6">
           <p className="text-sub mb-4">命签数据加载异常</p>
-          <button onClick={() => { sessionStorage.removeItem('xinzhai_birth'); router.push('/register'); }} className="px-4 py-2 rounded-xl bg-accent text-white">
+          <button onClick={() => { try { window.sessionStorage?.removeItem('xinzhai_birth'); } catch {} router.push('/register'); }} className="px-4 py-2 rounded-xl bg-accent text-white">
             重新注册
           </button>
         </main>
@@ -767,6 +773,34 @@ export default function CardPage() {
 
   const wxEntries = card.wuxingStrength ? Object.entries(card.wuxingStrength) : [];
   const pillars = [bazi.year, bazi.month, bazi.day, bazi.hour];
+  const richPillars: Array<{ key: '年柱' | '月柱' | '日柱' | '时柱'; title: string; pillar: PillarDetail }> = richBazi
+    ? [
+        { key: '年柱', title: '年柱', pillar: richBazi.年柱 },
+        { key: '月柱', title: '月柱', pillar: richBazi.月柱 },
+        { key: '日柱', title: '日柱', pillar: richBazi.日柱 },
+        { key: '时柱', title: '时柱', pillar: richBazi.时柱 },
+      ]
+    : [];
+  const formatCangGan = (pillar: PillarDetail): string[] => {
+    const c = pillar.地支.藏干;
+    return [
+      c?.主气 ? `${c.主气.天干}${c.主气.十神}` : '',
+      c?.中气 ? `${c.中气.天干}${c.中气.十神}` : '',
+      c?.余气 ? `${c.余气.天干}${c.余气.十神}` : '',
+    ].filter(Boolean);
+  };
+  const professionalRows = richPillars.length > 0
+    ? [
+        { label: '藏干', values: richPillars.map(p => formatCangGan(p.pillar)) },
+        { label: '星运', values: richPillars.map(p => p.pillar.星运 || '—') },
+        { label: '自坐', values: richPillars.map(p => p.pillar.自坐 || '—') },
+        { label: '空亡', values: richPillars.map(p => p.pillar.空亡 || '—') },
+        { label: '纳音', values: richPillars.map(p => p.pillar.纳音 || '—') },
+        { label: '神煞', values: richPillars.map(p => getPillarShenSha(p.key, richBazi!).length > 0 ? getPillarShenSha(p.key, richBazi!) : ['—']) },
+      ]
+    : [];
+  const needElements = [...(card.yongShen?.yongShen || []), ...(card.yongShen?.xiShen || [])];
+  const energyToneColor = getEnergyToneColor(card.strength?.level);
 
   return (
     <>
@@ -779,7 +813,7 @@ export default function CardPage() {
       )}
 
       <main className="min-h-screen flex flex-col items-center px-6 py-12 bg-bg">
-        <div className="animate-fade-in-up w-full max-w-sm flex flex-col gap-6">
+        <div className="animate-fade-in-up w-full max-w-md flex flex-col gap-6">
 
           {/* 标题 */}
           <div className="text-center flex flex-col items-center gap-2">
@@ -791,13 +825,13 @@ export default function CardPage() {
           <div className="flex justify-center">
             <div className="inline-flex rounded-2xl bg-bg/80 border border-line/50 p-1">
               <button
-                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${viewMode === 'energy' ? 'bg-accent text-white shadow-sm' : 'text-sub hover:text-ink'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all focus:outline-none ${viewMode === 'energy' ? 'bg-accent text-white shadow-sm' : 'text-sub hover:text-ink'}`}
                 onClick={() => setViewMode('energy')}
               >
                 能量
               </button>
               <button
-                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${viewMode === 'professional' ? 'bg-accent text-white shadow-sm' : 'text-sub hover:text-ink'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all focus:outline-none ${viewMode === 'professional' ? 'bg-accent text-white shadow-sm' : 'text-sub hover:text-ink'}`}
                 onClick={() => setViewMode('professional')}
               >
                 专业盘
@@ -807,77 +841,95 @@ export default function CardPage() {
 
           {/* 白色卡片主体 - 能量视图 */}
           {viewMode === 'energy' && (
-          <div className="bg-card rounded-2xl shadow-sm border border-line/50 p-6 flex flex-col gap-5">
+          <div className="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border border-line p-5 flex flex-col gap-6">
 
-            {/* 1. 日主大字 + 一句人话 */}
-            <div className="text-center flex flex-col items-center gap-2">
-              <div className="w-20 h-20 rounded-2xl bg-accent-soft flex items-center justify-center">
-                <span className="text-4xl font-bold text-accent">{card.wuxing_personality?.[0]}</span>
+            {/* AI 轻读 */}
+            <button
+              onClick={() => router.push("/match")}
+              className="w-full rounded-[var(--radius-lg)] border border-[#9FE1CB] px-4 py-3 text-left transition-all active:scale-[0.99]"
+              style={{ background: 'linear-gradient(135deg,#EAF3DE 0%,#E1F5EE 100%)' }}
+            >
+              <div className="flex items-start gap-3">
+                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent animate-soft-pulse" />
+                <span className="min-w-0 flex-1 text-[13.5px] leading-6 text-ink-2">{getAiBannerText(card.strength?.level)}</span>
+                <span className="shrink-0 text-[11px] font-medium text-accent-dark pt-0.5">看看适合你的人 →</span>
               </div>
-              <h3 className="text-xl font-semibold text-ink">{card.wuxing_personality}</h3>
-              <p className="text-xs text-sub text-center leading-relaxed max-w-[240px]">
-                {card.wuxing_personality ? `${card.wuxing_personality}之命，五行能量独具特色` : '命格待解析'}
+            </button>
+
+            {/* 1. Hero */}
+            <div className="flex flex-col items-center text-center gap-3 pt-1">
+              <p className="text-[10.5px] tracking-[3px] text-sub">命签 · 你的能量</p>
+              <div className="flex items-baseline justify-center gap-1">
+                <span
+                  className="text-[38px] leading-none font-semibold text-ink font-serif-bazi"
+                  style={{ color: WX_COLOR[card.wuxing_personality?.slice(-1)] || 'var(--ink)' }}
+                >
+                  {card.wuxing_personality || '待定'}
+                </span>
+              </div>
+              <p className="text-[13.5px] text-sub leading-7 max-w-[300px]">
+                {getPersonaText(card.wuxing_personality, card.strength?.level)}
               </p>
             </div>
 
-            {/* 2. 五行能量形状图：雷达图 */}
+            {/* 2. 五行能量形状图 */}
             {wxEntries.length > 0 && (
-              <div className="flex justify-center">
-                <WuxingRadarChart
-                  wuxingStrength={Object.fromEntries(wxEntries.map(([wx, pct]) => [wx, pct as number]))}
-                  size={200}
-                />
-              </div>
-            )}
-
-            {/* 3. 此刻状态：旺衰翻人话 */}
-            {card.strength && (
-              <div className="bg-bg/60 rounded-2xl p-4 flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-sub font-medium">此刻状态</span>
-                  <span className="text-xs font-semibold text-ink">{card.strength.level}</span>
+                  <p className="text-[11px] font-medium text-ink">能量形状</p>
+                  <p className="text-[10.5px] tracking-[2px] text-sub">木 火 土 金 水</p>
                 </div>
-                <div className="w-full h-2 bg-line/50 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent transition-all duration-500"
-                    style={{ width: `${Math.max(5, Math.min(95, (card.strength.score || 0.5) * 100))}%` }}
+                <div className="flex justify-center rounded-[var(--radius-lg)] bg-[var(--gray-50)] py-4">
+                  <WuxingRadarChart
+                    wuxingStrength={Object.fromEntries(wxEntries.map(([wx, pct]) => [wx, pct as number]))}
+                    size={210}
                   />
                 </div>
-                <p className="text-[11px] text-sub italic">💬 {translateStrength(card.strength.level)}</p>
               </div>
             )}
 
-            {/* 4. 你的能量需要：喜用翻成人话 */}
-            {card.yongShen && (
+            {/* 3. 此刻状态 */}
+            {card.strength && (
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] text-sub font-medium">你的能量需要</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {card.yongShen.yongShen.map((el, i) => (
-                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: WX_COLOR[el] || '#eee', color: '#fff' }}>{el}</span>
-                  ))}
-                  {card.yongShen.xiShen.map((el, i) => (
-                    <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-accent-soft text-accent">{el}</span>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-ink">此刻状态</span>
+                  <span className="text-[11px] font-medium" style={{ color: energyToneColor }}>
+                    {getEnergyToneLabel(card.strength.level)}
+                  </span>
                 </div>
-                <p className="text-[11px] text-sub italic">💬 {translateYongShen(card.yongShen.yongShen.join(','))}</p>
+                <div className="w-full h-[5px] bg-line rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-150"
+                    style={{
+                      width: `${Math.max(8, Math.min(95, (card.strength.score || 0.5) * 100))}%`,
+                      background: energyToneColor,
+                    }}
+                  />
+                </div>
+                <p className="text-[13.5px] leading-7 text-sub">{translateStrength(card.strength.level)}</p>
               </div>
             )}
 
-            {/* 5. 神煞徽章墙（已做） */}
+            {/* 4. 你的能量需要 */}
+            <div className="rounded-[var(--radius-lg)] bg-accent-soft px-4 py-3 flex flex-col gap-1.5">
+              <span className="text-[11px] font-medium text-accent-dark">你的能量需要</span>
+              <p className="text-[13.5px] leading-7 text-ink-2">{getNeedText(needElements)}</p>
+            </div>
+
+            {/* 5. 神煞图鉴 */}
             {groupedShenSha.length > 0 && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-sub font-medium">神煞图鉴</p>
-                  <p className="text-[10px] text-sub">已集 {groupedShenSha.length}/{ALL_SHENSHA_NAMES.length}</p>
+                  <p className="text-[11px] text-ink font-medium">神煞图鉴</p>
+                  <p className="num text-[11px] text-sub">{groupedShenSha.length} / {ALL_SHENSHA_NAMES.length}</p>
                 </div>
 
                 {/* 徽章网格 */}
-                <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+                <div className="flex flex-wrap gap-x-3 gap-y-4">
                   {groupedShenSha.map((s, i) => {
                     const category = SHENSHA_CATEGORY[s.name] || 'qiTa';
                     const gradient = CATEGORY_GRADIENT[category] || CATEGORY_GRADIENT['qiTa'];
                     const svgIcon = SHENSHA_SVG[s.name] || SHENSHA_SVG['文昌'];
-                    const icon = SHENSHA_ICON[s.name] || '✨';
                     const count = s.positions.length;
                     const isWarning = !!s.warning;
                     const rarity = getRarity(s.name, count, isWarning);
@@ -890,7 +942,7 @@ export default function CardPage() {
                         <button
                           className="relative rounded-full flex items-center justify-center text-xl transition-all duration-200 active:scale-90 select-none"
                           style={{
-                            width: '72px', height: '72px',
+                            width: '64px', height: '64px',
                             border: `2px solid ${cfg.borderColor}`,
                             background: `linear-gradient(135deg, ${gradient.replace('bg-gradient-to-br from-[', '').replace('] to-[', ' ')})`,
                             boxShadow: `0 4px 20px ${cfg.glowColor}33`,
@@ -946,7 +998,7 @@ export default function CardPage() {
                           )}
                         </button>
                         {/* 名称 */}
-                        <span className="text-[10px] font-medium text-ink text-center leading-tight">{s.name}</span>
+                        <span className="text-[10.5px] font-medium text-ink text-center leading-tight max-w-[72px]">{s.name}</span>
                         {/* 星级指示 */}
                         {cfg.tier >= 4 && (
                           <div className="flex gap-0.5">
@@ -959,181 +1011,246 @@ export default function CardPage() {
                     );
                   })}
                 </div>
-
-                {/* 稀有度图例 */}
-                <div className="flex flex-wrap gap-x-3 gap-y-1 justify-center pt-1">
-                  {(['legendary4', 'legendary3', 'epic', 'rare', 'common', 'tidal'] as RarityTier[]).map(t => (
-                    <div key={t} className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full" style={{ background: RARITY[t].borderColor }} />
-                      <span className="text-[8px] text-sub">{RARITY[t].label}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
-            )}
-
-            {/* 总结 */}
-            {card.summary && (
-              <p className="text-xs text-sub leading-relaxed text-center">{card.summary}</p>
             )}
           </div>
           )}
 
           {/* 专业盘视图 */}
           {viewMode === 'professional' && (
-          <div className="bg-card rounded-2xl shadow-sm border border-line/50 p-6 flex flex-col gap-5">
+          <div className="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow)] border border-line p-5 flex flex-col gap-5">
             {/* 顶部一行：我是什么 */}
             <div className="text-center flex flex-col items-center gap-2">
               <div className="flex items-center gap-3 flex-wrap justify-center">
-                <span className="text-2xl font-bold" style={{ color: WX_COLOR[card.wuxing_personality?.[0]] }}>{card.wuxing_personality}</span>
+                <span className="text-[28px] leading-none font-semibold tracking-normal font-serif-bazi" style={{ color: WX_COLOR[card.wuxing_personality?.slice(-1)] }}>{card.wuxing_personality}</span>
                 <span className="text-sm text-sub">·</span>
-                <span className="text-sm text-ink">{card.strength?.level || '旺衰待定'}</span>
+                <span className="text-sm text-ink font-medium">{card.strength?.level || '旺衰待定'}</span>
                 <span className="text-sm text-sub">·</span>
-                <span className="text-xs text-sub">五行{wxEntries.map(([wx]) => wx).join('')}</span>
+                <span className="num text-[11px] text-sub">五行 {wxEntries.map(([wx]) => wx).join(' ')}</span>
               </div>
             </div>
 
-            {/* 四柱领域卡 */}
-            <div className="grid grid-cols-4 gap-3">
-              {pillars.map((p, i) => {
+            {/* 四柱领域卡 — richBazi 同源渲染 */}
+            <div className="grid grid-cols-4 gap-2.5">
+              {/* 构建 richPillars 列表（兼容降级） */}
+              {(richBazi
+                ? [
+                    { key: '年柱' as const, pillar: richBazi.年柱 },
+                    { key: '月柱' as const, pillar: richBazi.月柱 },
+                    { key: '日柱' as const, pillar: richBazi.日柱 },
+                    { key: '时柱' as const, pillar: richBazi.时柱 },
+                  ]
+                : pillars.map((p, i) => ({
+                    key: PILLAR_LABELS[i],
+                    pillar: null,
+                    simpleP: p,
+                  }))
+              ).map((item, i) => {
                 const pillarNames = ['年·根', '月·业', '日·己', '时·嗣'];
+                const pillarKeys = ['年柱', '月柱', '日柱', '时柱'] as const;
                 const isDayPillar = i === 2;
-                
+                const rich = item.pillar;
+
                 // 获取本柱神煞
-                const pillarShenSha = groupedShenSha.filter(s => 
-                  s.positions.includes(PILLAR_LABELS[i])
-                );
-                
+                const pillarShenShaNames = richBazi
+                  ? getPillarShenSha(pillarKeys[i], richBazi)
+                  : [];
+
+                // 获取本柱十神（天干）
+                const ganShishen = rich?.天干?.十神 || '';
+
+                // 地支五行颜色
+                const zhiWx = rich?.地支?.五行 || '';
+                const zhiColor = WX_COLOR[zhiWx] || '#44403c';
+                // 天干五行颜色
+                const ganWx = rich?.天干?.五行 || '';
+                const ganColor = WX_COLOR[ganWx] || '#44403c';
+
                 return (
                   <div
                     key={i}
-                    className={`rounded-2xl p-4 flex flex-col gap-3 transition-all ${isDayPillar ? 'ring-2 ring-accent/30' : ''}`}
-                    style={{ 
-                      background: isDayPillar ? 'rgba(111,162,146,0.08)' : '#fafaf9',
-                      border: `1px solid ${isDayPillar ? 'rgba(111,162,146,0.2)' : 'rgba(0,0,0,0.06)'}`
+                    className="rounded-[var(--radius-lg)] px-2.5 py-4 flex flex-col gap-3 transition-all min-w-0"
+                    style={{
+                      background: isDayPillar ? 'var(--accent-light)' : 'var(--gray-50)',
+                      border: isDayPillar ? '1px solid var(--accent)' : '1px solid var(--line)',
+                      boxShadow: isDayPillar ? 'var(--shadow)' : 'none',
                     }}
                   >
                     {/* 柱名+领域 */}
                     <div className="text-center">
-                      <div className="text-[10px] text-sub font-medium">{pillarNames[i]}</div>
-                      <div className="text-[9px] text-sub/60 mt-0.5">{PILLAR_LABELS[i]}</div>
+                      <div className="text-[10px] text-sub font-medium whitespace-nowrap">{pillarNames[i]}</div>
+                      <div className="text-[9px] text-sub/60 mt-0.5">{pillarKeys[i]}</div>
                     </div>
 
-                    {/* 天干/地支大字 */}
-                    {p && (
+                    {/* 天干/地支大字（五行上色）+ 主星 */}
+                    {rich ? (
+                      <>
+                        <div className="flex flex-col items-center gap-1.5">
+                          {/* 天干 */}
+                          <div className="text-center">
+                            <div
+                              className="text-[34px] leading-none font-semibold"
+                              style={{ color: ganColor }}
+                            >
+                              {rich.天干.天干}
+                            </div>
+                            <div className="text-[9px] text-sub mt-0.5">{ganWx}</div>
+                          </div>
+
+                          {/* 主星标签 */}
+                          {ganShishen && (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span
+                                className="text-[9px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap"
+                                style={{ background: `${ganColor}22`, color: ganColor }}
+                              >
+                                {TEN_GOD_LABEL[ganShishen] || ganShishen}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="w-8 h-[1px] bg-line/30" />
+
+                          {/* 地支 */}
+                          <div className="text-center">
+                            <div
+                              className="text-[34px] leading-none font-semibold"
+                              style={{ color: zhiColor }}
+                            >
+                              {rich.地支.地支}
+                            </div>
+                            <div className="text-[9px] text-sub mt-0.5">{zhiWx}</div>
+                          </div>
+                        </div>
+
+                        {/* 神煞印章墙（本柱） */}
+                        {pillarShenShaNames.length > 0 && (
+                          <div className="flex flex-wrap gap-1 justify-center max-h-14 overflow-hidden">
+                            {pillarShenShaNames.map((name, si) => {
+                              const rarity = getRarity(name, 1, SHENSHA_RARITY[name] === 'tidal');
+                              const cfg = RARITY[rarity];
+                              const sealChar = SHENSHA_SEAL_CHAR[name] || '神';
+                              return (
+                                <span
+                                  key={si}
+                                  className="inline-flex items-center justify-center w-5 h-5 rounded-md text-[9px] font-semibold text-white"
+                                  style={{ background: cfg.borderColor }}
+                                  title={name}
+                                >
+                                  {sealChar}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      // 降级：使用简单数据
                       <div className="flex flex-col items-center gap-2">
                         <div className="text-center">
-                          <div className="text-3xl font-bold" style={{ color: WX_COLOR[p.wuxing_gan] || '#333' }}>{p.gan}</div>
-                          <div className="text-[9px] text-sub mt-0.5">{p.wuxing_gan}</div>
+                          <div className="text-3xl font-bold" style={{ color: WX_COLOR[item.simpleP?.wuxing_gan || ''] || '#333' }}>{item.simpleP?.gan || '?'}</div>
+                          <div className="text-[9px] text-sub mt-0.5">{item.simpleP?.wuxing_gan || ''}</div>
                         </div>
                         <div className="w-8 h-[1px] bg-line/30" />
                         <div className="text-center">
-                          <div className="text-3xl font-bold">{p.zhi}</div>
+                          <div className="text-3xl font-bold">{item.simpleP?.zhi || '?'}</div>
                           <div className="text-[9px] text-sub mt-0.5">地支</div>
                         </div>
                       </div>
                     )}
-
-                    {/* 主星 - 暂未实现 */}
-                    {/* {p?.main_star && (
-                      <div className="text-center">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent-soft text-accent">{p.main_star}</span>
-                      </div>
-                    )} */}
-
-                    {/* 本柱神煞 - 印章chip */}
-                    {pillarShenSha.length > 0 && (
-                      <div className="flex flex-wrap gap-1 justify-center">
-                        {pillarShenSha.map((s, si) => {
-                          const rarity = getRarity(s.name, s.positions.length, !!s.warning);
-                          const cfg = RARITY[rarity];
-                          const sealChar = SHENSHA_SEAL_CHAR[s.name] || '神';
-                          return (
-                            <span
-                              key={si}
-                              className="inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold text-white"
-                              style={{ background: cfg.borderColor }}
-                              title={s.name}
-                            >
-                              {sealChar}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* 更细折叠区 - 默认收起 - 暂未实现 */}
-                    {/* <details className="group">
-                      <summary className="text-[9px] text-sub cursor-pointer hover:text-ink transition-colors list-none flex items-center gap-1">
-                        <span className="inline-block transition-transform group-open:rotate-90">▶</span>
-                        更细
-                      </summary>
-                      <div className="mt-2 flex flex-col gap-1 text-[9px] text-sub">
-                        {p?.cang_gan && <div>藏干: {p.cang_gan.join('')}</div>}
-                        {p?.xing_yun && <div>星运: {p.xing_yun}</div>}
-                        {p?.zi_sitting && <div>自坐: {p.zi_sitting}</div>}
-                        {p?.kong_wang && <div>空亡: {p.kong_wang}</div>}
-                        {p?.na_yin && <div>纳音: {p.na_yin}</div>}
-                      </div>
-                    </details> */}
                   </div>
                 );
               })}
             </div>
 
-            {/* 神煞徽章墙 - 专业盘也保留 */}
+            {/* 展开：保留完整专业元素，默认收起 */}
+            {professionalRows.length > 0 && (
+              <details className="group rounded-[var(--radius-lg)] border border-line overflow-hidden bg-card">
+                <summary className="list-none cursor-pointer select-none px-4 py-3 flex items-center justify-between transition-all hover:bg-[var(--gray-50)]">
+                  <span className="text-[12px] font-medium text-ink">
+                    <span className="group-open:hidden">展开</span>
+                    <span className="hidden group-open:inline">收起</span>
+                  </span>
+                  <span className="text-[11px] text-sub transition-transform group-open:rotate-90">›</span>
+                </summary>
+                <div className="overflow-x-auto border-t border-line">
+                  <div className="min-w-[420px]">
+                    <div className="grid grid-cols-[72px_repeat(4,minmax(0,1fr))] bg-[var(--gray-50)]">
+                      <div className="px-[14px] py-1.5 text-[11px] text-sub">项目</div>
+                      {richPillars.map(p => (
+                        <div key={p.key} className="px-[14px] py-1.5 text-center text-[11px] text-sub">{p.title}</div>
+                      ))}
+                    </div>
+
+                    {professionalRows.map((row) => (
+                      <div
+                        key={row.label}
+                        className="grid grid-cols-[72px_repeat(4,minmax(0,1fr))] border-b border-line last:border-b-0 hover:bg-[var(--gray-50)] transition-all"
+                      >
+                        <div className="px-[14px] py-[9px] text-[12px] text-sub font-medium">{row.label}</div>
+                        {row.values.map((value, colIndex) => {
+                          const list = Array.isArray(value) ? value : [value];
+                          const isShenSha = row.label === '神煞';
+                          return (
+                            <div key={`${row.label}-${colIndex}`} className="min-w-0 px-[14px] py-[9px] text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                {list.map((item, itemIndex) => (
+                                  <span
+                                    key={`${item}-${itemIndex}`}
+                                    className={`${isShenSha ? 'text-[11px] text-[var(--tier-normal)]' : 'text-[12px] text-ink'} leading-tight break-keep`}
+                                  >
+                                    {item}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            )}
+
+            {/* 神煞总览：专业盘采用紧凑信息列表 */}
             {groupedShenSha.length > 0 && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 border-t border-line/60 pt-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-sub font-medium">神煞图鉴</p>
+                  <p className="text-[11px] text-ink font-semibold">神煞总览</p>
                   <p className="text-[10px] text-sub">已集 {groupedShenSha.length}/{ALL_SHENSHA_NAMES.length}</p>
                 </div>
-                <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+                <div className="grid grid-cols-2 gap-2">
                   {groupedShenSha.map((s, i) => {
-                    const category = SHENSHA_CATEGORY[s.name] || 'qiTa';
-                    const gradient = CATEGORY_GRADIENT[category] || CATEGORY_GRADIENT['qiTa'];
                     const svgIcon = SHENSHA_SVG[s.name] || SHENSHA_SVG['文昌'];
                     const count = s.positions.length;
                     const isWarning = !!s.warning;
                     const rarity = getRarity(s.name, count, isWarning);
                     const cfg = RARITY[rarity];
-                    const showShare = MAJOR_AUSPICIOUS.includes(s.name);
                     return (
-                      <div key={i} className="flex flex-col items-center gap-1">
-                        <button
-                          className="relative rounded-full flex items-center justify-center text-xl transition-all duration-200 active:scale-90 select-none"
-                          style={{
-                            width: '72px', height: '72px',
-                            border: `2px solid ${cfg.borderColor}`,
-                            background: `linear-gradient(135deg, ${gradient.replace('bg-gradient-to-br from-[', '').replace('] to-[', ' ')})`,
-                            boxShadow: `0 4px 20px ${cfg.glowColor}33`,
-                          }}
-                          onClick={() => {
-                            setRevealTarget({
-                              name: s.name, svgIcon, rarity, position: s.positions.join('·'),
-                              description: s.description, warning: s.warning,
-                            });
-                          }}
-                        >
-                          {rarity === 'legendary4' && (
-                            <div className="absolute inset-0 rounded-full pointer-events-none overflow-hidden" style={{
-                              background: 'linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.25) 50%, transparent 100%)',
-                              backgroundSize: '200% 100%',
-                              animation: 'shimmer 2s linear infinite',
-                            }} />
-                          )}
-                          {isWarning && (
-                            <div className="absolute -inset-1 rounded-full pointer-events-none" style={{ border: '1.5px dashed #22D3EE44' }} />
-                          )}
-                          <span className="relative z-10 w-6 h-6" dangerouslySetInnerHTML={{ __html: svgIcon }} />
-                          {count > 1 && (
-                            <div className="absolute -top-1.5 -right-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-bold text-white" style={{ background: cfg.borderColor }}>
-                              ·{count}柱
-                            </div>
-                          )}
-                        </button>
-                        <span className="text-[10px] font-medium text-ink text-center leading-tight">{s.name}</span>
-                      </div>
+                      <button
+                        key={i}
+                        className="min-w-0 rounded-[var(--radius)] bg-[var(--gray-50)] border border-line px-3 py-2.5 flex items-center gap-2 text-left active:scale-[0.99] transition focus:outline-none focus:ring-2 focus:ring-accent/20"
+                        onClick={() => {
+                          setRevealTarget({
+                            name: s.name, svgIcon, rarity, position: s.positions.join('·'),
+                            description: s.description, warning: s.warning,
+                          });
+                        }}
+                      >
+                        <span
+                          className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-xl text-[11px] font-semibold text-white"
+                          style={{ background: cfg.borderColor }}
+                          dangerouslySetInnerHTML={{ __html: svgIcon }}
+                        />
+                        <span className="min-w-0 flex flex-col gap-0.5">
+                          <span className="text-[11px] text-ink font-medium truncate">{s.name}</span>
+                          <span className="text-[9px] text-sub truncate">{s.positions.join(' · ')}{isWarning ? ' · 需留意' : ''}</span>
+                        </span>
+                        {count > 1 && (
+                          <span className="ml-auto shrink-0 text-[9px] text-sub px-1.5 py-0.5 rounded-full bg-bg">+{count}</span>
+                        )}
+                      </button>
                     );
                   })}
                 </div>

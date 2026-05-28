@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { calculateBazi, baziToPrompt, getDayMasterWuxing, judgeStrength, findYongShen, calculateWuxingStrength, calculateLiuNian, judgeGeJu, calculateDaYun } from '@/lib/bazi'
-import { calcShenSha, getTiaoHou, getSanHeGroup, getXunKong } from '@/lib/shensha'
+import { calculateBazi, getDayMasterWuxing, judgeStrength, findYongShen, calculateWuxingStrength, calculateLiuNian, judgeGeJu, calculateDaYun } from '@/lib/bazi'
+import { calcShenSha, getTiaoHou } from '@/lib/shensha'
+import { buildRichBaziFromSimple } from '@/lib/bazi-rich'
 
 // 三合局辅助函数：返回地支所属的三合局名
 // getSanHeGroup, getXunKong moved to shensha.ts
@@ -23,26 +23,19 @@ export async function POST(request: NextRequest) {
       is_lunar || false
     );
 
-    // 获取当前用户
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // 从数据库读取用户档案
-    let profile = null;
-    if (user) {
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      profile = data;
-    }
-
-    // 生成人格卡片数据（使用命理规则层）
+    // 命理规则层（能量名片数据）
     const wuxing = getDayMasterWuxing(bazi);
     const strength = judgeStrength(bazi);
     const yongShen = findYongShen(bazi);
     const wxStrength = calculateWuxingStrength(bazi);
-    
+    const shenSha = calcShenSha(bazi);
+    const richBazi = buildRichBaziFromSimple(bazi, {
+      gender,
+      solarText: is_lunar ? '' : `${birth_year}-${String(birth_month).padStart(2, '0')}-${String(birth_day).padStart(2, '0')} ${String(hour ?? 12).padStart(2, '0')}:${String(minute ?? 0).padStart(2, '0')}`,
+      lunarText: is_lunar ? `${birth_year}-${String(birth_month).padStart(2, '0')}-${String(birth_day).padStart(2, '0')} ${String(hour ?? 12).padStart(2, '0')}:${String(minute ?? 0).padStart(2, '0')}` : '',
+      shenSha,
+    });
+
     const card = {
       wuxing_personality: `${bazi.dayGan}${wuxing}`,
       keywords: generateKeywords(wuxing, strength.level),
@@ -61,7 +54,7 @@ export async function POST(request: NextRequest) {
       },
       yongShen: yongShen,
       wuxingStrength: wxStrength.normalized,
-      shenSha: calcShenSha(bazi),
+      shenSha,
       tiaoHou: getTiaoHou(bazi.dayGan, bazi.month.zhi),
       liuNian: calculateLiuNian(new Date().getFullYear()),
       geJu: judgeGeJu(bazi),
@@ -75,7 +68,9 @@ export async function POST(request: NextRequest) {
         month: { gan: bazi.month.gan, zhi: bazi.month.zhi, wuxing_gan: bazi.month.wuxing_gan },
         day: { gan: bazi.day.gan, zhi: bazi.day.zhi, wuxing_gan: bazi.day.wuxing_gan },
         hour: bazi.hour ? { gan: bazi.hour.gan, zhi: bazi.hour.zhi, wuxing_gan: bazi.hour.wuxing_gan } : undefined
-      }
+      },
+      // 专业盘展示数据
+      richBazi,
     });
   } catch (error) {
     console.error('生成卡片失败:', error);
@@ -93,7 +88,7 @@ function generateKeywords(wuxing: string, strength: string): string[] {
     '水': ['智慧', '灵活', '深沉', '敏感', '善变']
   };
   const base = baseMap[wuxing] || ['独特', '神秘'];
-  
+
   // 根据旺衰调整
   if (strength.includes('旺')) {
     return base.map(k => k + '强');
@@ -112,7 +107,7 @@ function getEmotionPattern(wuxing: string, strength: string): string {
     '水': '情绪丰富，敏感细腻，易受环境影响'
   };
   const baseStr = base[wuxing] || '情绪独特，难以捉摸';
-  
+
   // 根据旺衰补充
   if (strength === '极旺' || strength === '偏旺' || strength === '旺') {
     return baseStr + '，能量充沛';
@@ -144,20 +139,8 @@ function getSocialTendency(wuxing: string): string {
   return map[wuxing] || '社交方式独特';
 }
 
-function getMatchType(wuxing: string): string {
-  const map: Record<string, string> = {
-    '木': '水（智慧）或火（热情）',
-    '火': '木（稳重）或土（包容）',
-    '土': '火（活力）或金（果断）',
-    '金': '土（稳定）或水（灵活）',
-    '水': '金（坚定）或木（正直）'
-  };
-  return map[wuxing] || '相似五行';
-}
-
 /** 平实文案生成（无算命腔）*/
 function generatePlainSummary(dayGan: string, wuxing: string, strength: string): string {
-  // 平实的日主描述
   const wxDesc: Record<string, string> = {
     '木': '有生长的方向感',
     '火': '容易被点燃、也容易点燃别人',
@@ -165,8 +148,7 @@ function generatePlainSummary(dayGan: string, wuxing: string, strength: string):
     '金': '有标准、有边界',
     '水': '敏感、能感受到别人感受不到的',
   };
-  
-  // 平实的旺衰描述
+
   let strengthDesc = '';
   if (strength.includes('旺')) {
     strengthDesc = '能量偏旺，自己能撑得住，但有时候有点硬';
@@ -175,8 +157,8 @@ function generatePlainSummary(dayGan: string, wuxing: string, strength: string):
   } else {
     strengthDesc = '能量比较中和，不算太硬也不太软';
   }
-  
+
   const baseDesc = wxDesc[wuxing] || '有点特别';
-  
+
   return `你是${dayGan}${wuxing}——${baseDesc}。${strengthDesc}。`;
 }

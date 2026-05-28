@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { InkMark } from "@/components/InkMark";
 
-/** 角色类型 */
-type RoleType = "玩伴" | "恋人" | "老板" | "合伙人";
+/** 契合类型 */
+type RoleType = "能量契合";
 
 interface MockProfile {
   id: string;
@@ -18,10 +18,10 @@ interface MockProfile {
   shishen: string;
 }
 
-/** 不同角色的匹配算法 */
+/** 能量契合算法 */
 function calcCompatibilityByRole(
   myWx: string, myYongshen: string, theirWx: string,
-  theirGan: string, myGuiren: string[], role: RoleType
+  theirGan: string, myGuiren: string[], _role: RoleType
 ): number {
   const shengMap: Record<string, string> = { "木": "火", "火": "土", "土": "金", "金": "水", "水": "木" };
   const keMap: Record<string, string> = { "木": "土", "火": "金", "土": "水", "金": "木", "水": "火" };
@@ -33,65 +33,34 @@ function calcCompatibilityByRole(
   const tongPin = myWx === theirWx;
   const hasChongKe = keMap[theirWx] === myWx || keMap[myWx] === theirWx;
   let baseScore = 60;
-  switch (role) {
-    case "恋人":
-      if (buXiYong) baseScore += 25;
-      else if (shengXiYong) baseScore += 18;
-      if (hasTianGanHe) baseScore += 12;
-      if (tongPin) baseScore += 8;
-      if (hasChongKe) baseScore -= 10;
-      break;
-    case "老板":
-      if (isGuiren) baseScore += 30;
-      else if (shengMap[theirWx] === myWx) baseScore += 20;
-      else if (buXiYong) baseScore += 15;
-      if (hasChongKe) baseScore -= 5;
-      break;
-    case "合伙人":
-      if (buXiYong) baseScore += 28;
-      else if (shengXiYong) baseScore += 15;
-      if (tongPin) baseScore -= 5;
-      break;
-    case "玩伴":
-      if (tongPin) baseScore += 22;
-      else if (shengMap[theirWx] === myWx || shengMap[myWx] === theirWx) baseScore += 12;
-      if (hasChongKe) baseScore -= 15;
-      break;
-  }
+  if (buXiYong) baseScore += 24;
+  else if (shengXiYong) baseScore += 16;
+  else if (shengMap[theirWx] === myWx || shengMap[myWx] === theirWx) baseScore += 10;
+  if (hasTianGanHe) baseScore += 10;
+  if (isGuiren) baseScore += 8;
+  if (tongPin) baseScore += 6;
+  if (hasChongKe) baseScore -= 8;
   return Math.min(99, Math.max(40, baseScore));
 }
 
 /** 平实的契合理由 */
 function getPlainReason(
   myWx: string, myYongshen: string, theirWx: string,
-  theirGan: string, myGuiren: string[], role: RoleType
+  theirGan: string, myGuiren: string[], _role: RoleType
 ): string {
   const shengMap: Record<string, string> = { "木": "火", "火": "土", "土": "金", "金": "水", "水": "木" };
+  const tianGanHe: Record<string, string> = { "甲": "己", "己": "甲", "乙": "庚", "庚": "乙", "丙": "辛", "辛": "丙", "丁": "壬", "壬": "丁", "戊": "癸", "癸": "戊" };
   const buXiYong = theirWx === myYongshen;
   const shengXiYong = shengMap[theirWx] === myYongshen;
   const isGuiren = myGuiren.includes(theirGan);
   const tongPin = myWx === theirWx;
-  switch (role) {
-    case "恋人":
-      if (buXiYong) return `TA 是${theirWx}，正好补你缺的那块。跟这种人一起，你会松一点。`;
-      if (shengXiYong) return `TA 的能量能滋养你，跟 TA 在一起，你会觉得被理解。`;
-      if (tongPin) return `你们能量底色很像，容易聊到一块。`;
-      return `TA 的能量和你有些张力，吸引力强，但得磨合。`;
-    case "老板":
-      if (isGuiren) return `TA 是你的贵人类型。在你上面能托得住你。`;
-      if (shengMap[theirWx] === myWx) return `TA 的能量能撑着你，适合在你上面。`;
-      if (buXiYong) return `TA 有你缺的那块能量，跟着 TA 能学到东西。`;
-      return `能量关系一般，主要看实际能力和资源。`;
-    case "合伙人":
-      if (buXiYong) return `TA 恰好补你短板，能力互补，适合一起干事。`;
-      if (shengXiYong) return `TA 能提供你需要的资源，合作会有正向流动。`;
-      return `能量搭配还行，合作要靠业务互补。`;
-    case "玩伴":
-      if (tongPin) return `你们频率挺像的，玩到一块不费劲。`;
-      if (shengMap[theirWx] === myWx) return `TA 让你觉得舒服，没什么压力。`;
-      if (shengMap[myWx] === theirWx) return `你让 TA 舒服，相处轻松。`;
-      return `有点冲，但架不住玩得来。`;
-  }
+  const hasTianGanHe = tianGanHe[theirGan] === myYongshen?.charAt(0) || false;
+  if (buXiYong) return `TA 有你正需要的那种能量，相处时更容易把你托稳。`;
+  if (shengXiYong) return `TA 的能量能顺着你往前走，关系里会有比较自然的流动。`;
+  if (hasTianGanHe) return `你们之间有一层自然的牵引感，容易从陌生过渡到熟悉。`;
+  if (isGuiren) return `TA 的能量对你有支撑感，关键时候容易给到你助力。`;
+  if (tongPin) return `你们底色相近，理解成本低，但也要给彼此留空间。`;
+  return `你们能量不完全相同，适合慢慢接触，看真实相处里的节奏。`;
 }
 
 function getWuxingColor(wx: string): string {
@@ -129,11 +98,9 @@ interface MatchResult {
   compatibility: number; reason: string;
 }
 
-const ROLES: RoleType[] = ["玩伴", "恋人", "老板", "合伙人"];
-
 export default function MatchPage() {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<RoleType>("玩伴");
+  const selectedRole: RoleType = "能量契合";
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [sent, setSent] = useState<string[]>([]);
   const [myWx, setMyWx] = useState<string | null>(null);
@@ -226,7 +193,7 @@ export default function MatchPage() {
         <div className="text-center flex flex-col items-center gap-2">
           <InkMark />
           <h2 className="text-xl font-semibold text-ink">遇合</h2>
-          <p className="text-xs text-sub">选择角色，看看谁比较合</p>
+          <p className="text-xs text-sub">看看谁和你的能量更合</p>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-sub">你的类型</span>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: getWuxingColor(myWx) + '20', color: getWuxingColor(myWx) }}>
@@ -235,21 +202,11 @@ export default function MatchPage() {
           </div>
         </div>
 
-        {/* 角色选择器 - 轻感 pill 风格 */}
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {ROLES.map(role => (
-            <button
-              key={role}
-              onClick={() => setSelectedRole(role)}
-              className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 ${
-                selectedRole === role
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'bg-card border border-line text-sub hover:border-accent hover:text-accent'
-              }`}
-            >
-              {role}
-            </button>
-          ))}
+        {/* 单一契合维度 */}
+        <div className="flex justify-center">
+          <span className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-accent text-white shadow-sm">
+            能量契合
+          </span>
         </div>
 
         {/* 匹配列表 - 白色卡片风格 */}

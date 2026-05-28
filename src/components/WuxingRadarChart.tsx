@@ -8,8 +8,8 @@ interface WuxingRadarChartProps {
 }
 
 const WX_COLOR: Record<string, string> = {
-  木: "#9CB89A",
-  火: "#D88A7A",
+  木: "#5E9C6B",
+  火: "#D8744F",
   土: "#C9A86A",
   金: "#B9AE92",
   水: "#7AA0C4",
@@ -61,7 +61,7 @@ export default function WuxingRadarChart({ wuxingStrength, size = 200 }: WuxingR
             key={i}
             d={generateGrid(level)}
             fill="none"
-            stroke="#e5e7eb"
+            stroke="var(--line)"
             strokeWidth="1"
             opacity={0.5}
           />
@@ -77,7 +77,7 @@ export default function WuxingRadarChart({ wuxingStrength, size = 200 }: WuxingR
               y1={center}
               x2={p.x}
               y2={p.y}
-              stroke="#e5e7eb"
+              stroke="var(--line)"
               strokeWidth="1"
               opacity={0.5}
             />
@@ -87,8 +87,8 @@ export default function WuxingRadarChart({ wuxingStrength, size = 200 }: WuxingR
         {/* 数据区域 */}
         <path
           d={dataPath}
-          fill="rgba(107, 142, 122, 0.2)"
-          stroke="rgb(107, 142, 122)"
+          fill="rgba(29, 158, 117, 0.18)"
+          stroke="var(--accent)"
           strokeWidth="2"
         />
 
@@ -101,7 +101,7 @@ export default function WuxingRadarChart({ wuxingStrength, size = 200 }: WuxingR
               cx={p.x}
               cy={p.y}
               r={4}
-              fill="rgb(107, 142, 122)"
+              fill="var(--accent)"
               stroke="white"
               strokeWidth="2"
             />
@@ -128,16 +128,8 @@ export default function WuxingRadarChart({ wuxingStrength, size = 200 }: WuxingR
       </svg>
 
       {/* 数值显示 */}
-      <div className="grid grid-cols-5 gap-1 w-full max-w-[200px]">
-        {WX_ORDER.map((wx) => (
-          <div key={wx} className="flex flex-col items-center gap-0.5">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: WX_COLOR[wx] || "#ccc" }} />
-            <span className="text-[9px] text-sub">{wx}</span>
-            <span className="text-[9px] text-ink font-medium">
-              {Math.round((wuxingStrength[wx] || 0) * 100)}%
-            </span>
-          </div>
-        ))}
+      <div className="num text-[11px] font-medium text-sub tracking-normal">
+        {WX_ORDER.map((wx) => Math.round((wuxingStrength[wx] || 0) * 100)).join(" · ")}
       </div>
     </div>
   );

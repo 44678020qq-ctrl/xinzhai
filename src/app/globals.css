@@ -1,26 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+:root {
+  --accent: #1D9E75;
+  --accent-light: #E1F5EE;
+  --accent-dark: #085041;
+  --accent-soft: #E6F0EC;
+
+  --bg: #F0EDE6;
+  --bg-card: #FBF8F3;
+  --gray-50: #F8F8F6;
+  --gray-100: #F1EFE8;
+  --gray-200: #D3D1C7;
+  --gray-400: #888780;
+  --gray-600: #5F5E5A;
+  --gray-800: #2C2C2A;
+
+  --ink: #1A1A18;
+  --ink-2: #444441;
+  --sub: #888780;
+  --line: #E5E3DC;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.08);
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  --warn: #EF9F27;
+  --warn-light: #FAEEDA;
+  --danger: #D85A30;
+  --danger-light: #FAECE7;
+
+  --tier-golden: #E8B84B;
+  --tier-legend: #E0903C;
+  --tier-epic: #9B6FC4;
+  --tier-rare: #5B86C4;
+  --tier-normal: #A8A296;
+  --tier-tide: #7FA8B0;
+
+  --wood: #5E9C6B;
+  --fire: #D8744F;
+  --earth: #C9A86A;
+  --metal: #B9AE92;
+  --water: #7AA0C4;
+}
+
 @theme {
-  /* 心斋 v2.0 轻交友色系 */
-  --color-bg: #F6F3EE;
-  --color-card: #FFFFFF;
-  --color-ink: #33312E;
-  --color-sub: #9A958C;
-  --color-line: #ECE7DF;
-  --color-accent: #6FA292;
-  --color-accent-soft: #E6F0EC;
+  /* 心斋 v2.1 命签 token */
+  --color-bg: var(--bg);
+  --color-card: var(--bg-card);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-sub: var(--sub);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-light);
+  --color-accent-dark: var(--accent-dark);
   --color-paper: #FEFEF9;
-  --color-water: #7AA0C4;
-  --color-fire: #D88A7A;
-  --color-earth: #C9A86A;
-  --color-metal: #B9AE92;
-  --color-wood: #9CB89A;
+  --color-water: var(--water);
+  --color-fire: var(--fire);
+  --color-earth: var(--earth);
+  --color-metal: var(--metal);
+  --color-wood: var(--wood);
 }
 
 @layer base {
   body {
     @apply bg-bg text-ink antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    font-family: "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif SC", serif;
   }
 
   /* 轻感滚动条 */
@@ -60,7 +106,23 @@
   }
 }
 .animate-fade-in-up {
-  animation: fadeInUp 0.5s ease-out both;
+  animation: fadeInUp 0.25s ease-out both;
+}
+
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fadeUp 0.25s ease-out both;
+}
+
+@keyframes softPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1); }
+}
+.animate-soft-pulse {
+  animation: softPulse 2s ease-in-out infinite;
 }
 
 /* 按钮点击水波反馈 */
@@ -158,4 +220,16 @@ button:active:not(:disabled) {
     animation: none !important;
     opacity: 1 !important;
   }
+}
+
+/* 思源宋体（专业盘汉字） */
+.font-serif-bazi {
+  font-family: "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif SC", serif;
+}
+
+/* Inter（数字/英文） */
+.font-inter,
+.num,
+.num * {
+  font-family: "Inter", "JetBrains Mono", ui-monospace, monospace;
 }
