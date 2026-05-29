@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 interface WuxingRadarChartProps {
   wuxingStrength: Record<string, number>;
   size?: number;
@@ -24,12 +26,20 @@ const WX_LABEL: Record<string, string> = {
   水: "流动",
 };
 
-const BLOB_LAYOUT: Record<string, { x: number; y: number; rx: number; ry: number; rotate: number }> = {
-  木: { x: 64, y: 58, rx: 38, ry: 48, rotate: -24 },
-  火: { x: 48, y: 122, rx: 58, ry: 36, rotate: 14 },
-  土: { x: 132, y: 123, rx: 38, ry: 30, rotate: -12 },
-  金: { x: 128, y: 72, rx: 34, ry: 28, rotate: 28 },
-  水: { x: 70, y: 92, rx: 42, ry: 32, rotate: -8 },
+const REGION_PATH: Record<string, string> = {
+  木: "M 35 36 C 55 18, 91 16, 112 34 C 126 47, 118 68, 95 75 C 75 82, 44 68, 35 36 Z",
+  火: "M 111 35 C 143 34, 161 57, 156 84 C 151 111, 121 116, 99 97 C 89 88, 91 79, 102 70 C 112 60, 121 48, 111 35 Z",
+  土: "M 102 100 C 127 91, 155 101, 158 130 C 153 151, 130 162, 110 153 C 93 145, 88 122, 102 100 Z",
+  金: "M 58 125 C 73 108, 98 116, 111 151 C 94 162, 66 160, 49 144 C 42 136, 47 130, 58 125 Z",
+  水: "M 29 67 C 45 51, 72 54, 89 75 C 103 92, 89 116, 63 126 C 42 134, 23 119, 22 96 C 21 84, 23 74, 29 67 Z",
+};
+
+const LABEL_POS: Record<string, { x: number; y: number }> = {
+  木: { x: 73, y: 48 },
+  火: { x: 130, y: 73 },
+  土: { x: 128, y: 124 },
+  金: { x: 77, y: 141 },
+  水: { x: 49, y: 98 },
 };
 
 function normalizeStrength(wuxingStrength: Record<string, number>) {
@@ -56,9 +66,10 @@ export default function WuxingRadarChart({
   size = 220,
   dayType,
 }: WuxingRadarChartProps) {
+  const id = useId().replace(/:/g, "");
   const items = normalizeStrength(wuxingStrength);
-  const centerLabel = dayType || items.find((item) => item.percent === Math.max(...items.map((i) => i.percent)))?.wx || "能量";
-  const scale = size / 180;
+  const byWx = Object.fromEntries(items.map((item) => [item.wx, item]));
+  const centerLabel = dayType || [...items].sort((a, b) => b.percent - a.percent)[0]?.wx || "能量";
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -69,53 +80,66 @@ export default function WuxingRadarChart({
         role="img"
         aria-label={`五行能量结构：${items.map((item) => `${item.wx}${item.percent}%`).join("，")}`}
         className="overflow-visible"
-        style={{ transform: `scale(${scale})`, transformOrigin: "center" }}
       >
         <defs>
-          <clipPath id="wuxing-orb-clip">
+          <clipPath id={`${id}-orb-clip`}>
             <circle cx="90" cy="90" r="68" />
           </clipPath>
-          <filter id="orb-soften" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="1.4" />
+          <filter id={`${id}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="10" stdDeviation="12" floodColor="#1A1A18" floodOpacity="0.08" />
           </filter>
-          <filter id="orb-shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="10" stdDeviation="12" floodColor="#1A1A18" floodOpacity="0.1" />
-          </filter>
+          {WX_ORDER.map((wx) => (
+            <radialGradient key={wx} id={`${id}-${wx}`} cx="42%" cy="35%" r="78%">
+              <stop offset="0%" stopColor={WX_COLOR[wx]} stopOpacity="0.62" />
+              <stop offset="68%" stopColor={WX_COLOR[wx]} stopOpacity="0.5" />
+              <stop offset="100%" stopColor={WX_COLOR[wx]} stopOpacity="0.38" />
+            </radialGradient>
+          ))}
         </defs>
 
-        <circle cx="90" cy="90" r="68" fill="var(--bg-card)" stroke="var(--line)" strokeWidth="1" filter="url(#orb-shadow)" />
+        <circle cx="90" cy="90" r="72" fill="rgba(255,255,255,0.64)" />
+        <circle cx="90" cy="90" r="68" fill="var(--bg-card)" stroke="var(--line)" strokeWidth="1" filter={`url(#${id}-shadow)`} />
 
-        <g clipPath="url(#wuxing-orb-clip)">
-          <rect x="12" y="12" width="156" height="156" fill="#FBF8F3" />
-          {items.map((item, index) => {
-            const layout = BLOB_LAYOUT[item.wx];
-            const energyScale = 0.72 + item.value * 1.55;
+        <g clipPath={`url(#${id}-orb-clip)`}>
+          <rect x="18" y="18" width="144" height="144" fill="#FBF8F3" />
+          {WX_ORDER.map((wx) => {
+            const item = byWx[wx];
+            const emphasis = 0.78 + Math.min(0.2, item.percent / 160);
             return (
-              <ellipse
-                key={item.wx}
-                cx={layout.x}
-                cy={layout.y}
-                rx={layout.rx * energyScale}
-                ry={layout.ry * energyScale}
-                fill={WX_COLOR[item.wx]}
-                opacity={0.42 + Math.min(0.32, item.value * 0.8)}
-                filter="url(#orb-soften)"
-                transform={`rotate(${layout.rotate} ${layout.x} ${layout.y})`}
-                style={{ animation: `fadeUp .25s ease-out ${index * 0.04}s both` }}
+              <path
+                key={wx}
+                d={REGION_PATH[wx]}
+                fill={`url(#${id}-${wx})`}
+                opacity={emphasis}
+                stroke="rgba(251,248,243,0.82)"
+                strokeWidth="5.5"
+                strokeLinejoin="round"
+                style={{ animation: "fadeUp .25s ease-out both" }}
               />
             );
           })}
-          <path
-            d="M 28 106 C 54 84, 72 116, 96 94 C 118 74, 136 86, 157 62 L 157 168 L 28 168 Z"
-            fill="rgba(251,248,243,0.62)"
-          />
-          <circle cx="90" cy="90" r="27" fill="rgba(251,248,243,0.88)" />
+          <circle cx="90" cy="90" r="29" fill="rgba(251,248,243,0.92)" stroke="rgba(229,227,220,0.8)" strokeWidth="1" />
         </g>
 
-        <circle cx="90" cy="90" r="68" fill="none" stroke="rgba(229,227,220,0.95)" strokeWidth="1.2" />
-        <circle cx="90" cy="90" r="71" fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth="5" />
+        <circle cx="90" cy="90" r="68" fill="none" stroke="rgba(201,188,154,0.42)" strokeWidth="1.2" />
+        <circle cx="90" cy="90" r="72" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="5" />
 
-        <text x="90" y="84" textAnchor="middle" dominantBaseline="middle" fill="var(--ink)" className="font-serif-bazi text-[22px] font-semibold">
+        {WX_ORDER.map((wx) => {
+          const item = byWx[wx];
+          const pos = LABEL_POS[wx];
+          return (
+            <g key={`label-${wx}`} opacity={item.percent <= 3 ? 0.35 : 1}>
+              <text x={pos.x} y={pos.y - 3} textAnchor="middle" dominantBaseline="middle" fill="#FBF8F3" className="font-serif-bazi text-[13px] font-semibold">
+                {wx}
+              </text>
+              <text x={pos.x} y={pos.y + 13} textAnchor="middle" dominantBaseline="middle" fill="#FBF8F3" className="num text-[10px] font-medium">
+                {item.percent}%
+              </text>
+            </g>
+          );
+        })}
+
+        <text x="90" y="85" textAnchor="middle" dominantBaseline="middle" fill="var(--ink)" className="font-serif-bazi text-[21px] font-semibold">
           {centerLabel}
         </text>
         <text x="90" y="108" textAnchor="middle" dominantBaseline="middle" fill="var(--sub)" className="text-[10px] font-medium">
@@ -125,17 +149,11 @@ export default function WuxingRadarChart({
 
       <div className="w-full max-w-[270px] flex flex-col gap-2">
         <p className="text-center text-[13.5px] leading-6 text-ink-2">{getSummary(items)}</p>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="flex justify-center gap-3">
           {items.map((item) => (
-            <div key={item.wx} className="min-w-0 flex flex-col items-center gap-1">
-              <div className="h-1.5 w-full rounded-full bg-line overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${Math.max(8, item.percent)}%`, background: WX_COLOR[item.wx] }}
-                />
-              </div>
+            <div key={item.wx} className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: WX_COLOR[item.wx] }} />
               <span className="text-[10px] text-sub">{WX_LABEL[item.wx]}</span>
-              <span className="num text-[9px] text-sub/70">{item.percent}</span>
             </div>
           ))}
         </div>
