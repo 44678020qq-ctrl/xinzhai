@@ -11,11 +11,19 @@ interface WuxingRadarChartProps {
 const WX_ORDER = ["木", "火", "土", "金", "水"] as const;
 
 const WX_COLOR: Record<string, string> = {
-  木: "#5E9C6B",
-  火: "#D8744F",
-  土: "#C9A86A",
-  金: "#B9AE92",
-  水: "#7AA0C4",
+  木: "#6FA173",
+  火: "#D97955",
+  土: "#D7B564",
+  金: "#BBB196",
+  水: "#7FA8CC",
+};
+
+const WX_LABEL_FILL: Record<string, string> = {
+  木: "#FBF8F0",
+  火: "#FBF8F0",
+  土: "#7A6236",
+  金: "#756C55",
+  水: "#FBF8F0",
 };
 
 const WX_LABEL: Record<string, string> = {
@@ -27,19 +35,19 @@ const WX_LABEL: Record<string, string> = {
 };
 
 const REGION_PATH: Record<string, string> = {
-  木: "M 35 36 C 55 18, 91 16, 112 34 C 126 47, 118 68, 95 75 C 75 82, 44 68, 35 36 Z",
-  火: "M 111 35 C 143 34, 161 57, 156 84 C 151 111, 121 116, 99 97 C 89 88, 91 79, 102 70 C 112 60, 121 48, 111 35 Z",
-  土: "M 102 100 C 127 91, 155 101, 158 130 C 153 151, 130 162, 110 153 C 93 145, 88 122, 102 100 Z",
-  金: "M 58 125 C 73 108, 98 116, 111 151 C 94 162, 66 160, 49 144 C 42 136, 47 130, 58 125 Z",
-  水: "M 29 67 C 45 51, 72 54, 89 75 C 103 92, 89 116, 63 126 C 42 134, 23 119, 22 96 C 21 84, 23 74, 29 67 Z",
+  木: "M 59 50 C 79 31, 116 29, 139 49 C 153 61, 146 83, 124 92 C 100 102, 70 90, 56 72 C 49 63, 51 56, 59 50 Z",
+  火: "M 137 48 C 169 54, 190 81, 184 113 C 178 145, 149 151, 126 130 C 109 115, 108 95, 125 78 C 139 64, 148 54, 137 48 Z",
+  土: "M 127 129 C 151 111, 184 126, 183 157 C 181 182, 153 198, 130 184 C 110 171, 108 146, 127 129 Z",
+  金: "M 75 158 C 91 139, 119 147, 131 184 C 113 201, 80 199, 60 183 C 51 175, 58 165, 75 158 Z",
+  水: "M 42 78 C 60 56, 93 66, 112 96 C 130 124, 112 158, 78 170 C 49 180, 26 160, 25 127 C 24 105, 29 90, 42 78 Z",
 };
 
 const LABEL_POS: Record<string, { x: number; y: number }> = {
-  木: { x: 73, y: 48 },
-  火: { x: 130, y: 73 },
-  土: { x: 128, y: 124 },
-  金: { x: 77, y: 141 },
-  水: { x: 49, y: 98 },
+  木: { x: 95, y: 63 },
+  火: { x: 157, y: 91 },
+  土: { x: 155, y: 157 },
+  金: { x: 93, y: 181 },
+  水: { x: 56, y: 126 },
 };
 
 function normalizeStrength(wuxingStrength: Record<string, number>) {
@@ -63,7 +71,7 @@ function getSummary(items: ReturnType<typeof normalizeStrength>) {
 
 export default function WuxingRadarChart({
   wuxingStrength,
-  size = 220,
+  size = 270,
   dayType,
 }: WuxingRadarChartProps) {
   const id = useId().replace(/:/g, "");
@@ -76,86 +84,117 @@ export default function WuxingRadarChart({
       <svg
         width={size}
         height={size}
-        viewBox="0 0 180 180"
+        viewBox="0 0 240 240"
         role="img"
         aria-label={`五行能量结构：${items.map((item) => `${item.wx}${item.percent}%`).join("，")}`}
-        className="overflow-visible"
+        className="energy-watercolor-orb overflow-visible"
       >
         <defs>
           <clipPath id={`${id}-orb-clip`}>
-            <circle cx="90" cy="90" r="68" />
+            <circle cx="120" cy="120" r="94" />
           </clipPath>
-          <filter id={`${id}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="10" stdDeviation="12" floodColor="#1A1A18" floodOpacity="0.08" />
+          <filter id={`${id}-shadow`} x="-25%" y="-25%" width="150%" height="150%">
+            <feDropShadow dx="0" dy="14" stdDeviation="14" floodColor="#463F32" floodOpacity="0.1" />
+          </filter>
+          <filter id={`${id}-watercolor`} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="12" result="texture" />
+            <feDisplacementMap in="SourceGraphic" in2="texture" scale="1.8" xChannelSelector="R" yChannelSelector="G" />
+            <feGaussianBlur stdDeviation="0.18" />
+          </filter>
+          <filter id={`${id}-paper`} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="paperNoise" />
+            <feColorMatrix
+              in="paperNoise"
+              type="matrix"
+              values="0 0 0 0 0.96 0 0 0 0 0.93 0 0 0 0 0.86 0 0 0 .15 0"
+            />
           </filter>
           {WX_ORDER.map((wx) => (
-            <radialGradient key={wx} id={`${id}-${wx}`} cx="42%" cy="35%" r="78%">
-              <stop offset="0%" stopColor={WX_COLOR[wx]} stopOpacity="0.62" />
-              <stop offset="68%" stopColor={WX_COLOR[wx]} stopOpacity="0.5" />
-              <stop offset="100%" stopColor={WX_COLOR[wx]} stopOpacity="0.38" />
+            <radialGradient key={wx} id={`${id}-${wx}`} cx="38%" cy="28%" r="82%">
+              <stop offset="0%" stopColor={WX_COLOR[wx]} stopOpacity="0.78" />
+              <stop offset="58%" stopColor={WX_COLOR[wx]} stopOpacity="0.6" />
+              <stop offset="100%" stopColor={WX_COLOR[wx]} stopOpacity="0.43" />
             </radialGradient>
           ))}
         </defs>
 
-        <circle cx="90" cy="90" r="72" fill="rgba(255,255,255,0.64)" />
-        <circle cx="90" cy="90" r="68" fill="var(--bg-card)" stroke="var(--line)" strokeWidth="1" filter={`url(#${id}-shadow)`} />
+        <circle cx="120" cy="120" r="102" fill="rgba(252,248,241,0.78)" filter={`url(#${id}-shadow)`} />
+        <circle cx="120" cy="120" r="96" fill="#FBF7EF" stroke="#E9DFC9" strokeWidth="2" />
 
         <g clipPath={`url(#${id}-orb-clip)`}>
-          <rect x="18" y="18" width="144" height="144" fill="#FBF8F3" />
+          <rect x="24" y="24" width="192" height="192" fill="#FBF7EF" />
+          <rect x="24" y="24" width="192" height="192" opacity="0.34" filter={`url(#${id}-paper)`} />
+
           {WX_ORDER.map((wx) => {
             const item = byWx[wx];
-            const emphasis = 0.78 + Math.min(0.2, item.percent / 160);
+            const emphasis = 0.78 + Math.min(0.18, item.percent / 180);
             return (
               <path
                 key={wx}
                 d={REGION_PATH[wx]}
                 fill={`url(#${id}-${wx})`}
-                opacity={emphasis}
-                stroke="rgba(251,248,243,0.82)"
-                strokeWidth="5.5"
+                opacity={item.percent <= 2 ? 0.42 : emphasis}
+                stroke="#FBF7EF"
+                strokeWidth="8"
                 strokeLinejoin="round"
-                style={{ animation: "fadeUp .25s ease-out both" }}
+                filter={`url(#${id}-watercolor)`}
               />
             );
           })}
-          <circle cx="90" cy="90" r="29" fill="rgba(251,248,243,0.92)" stroke="rgba(229,227,220,0.8)" strokeWidth="1" />
+
+          <path d="M 34 96 C 55 83, 81 83, 105 99" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="10" strokeLinecap="round" />
+          <path d="M 139 78 C 159 82, 173 96, 178 115" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="9" strokeLinecap="round" />
+          <path d="M 49 146 C 70 159, 94 159, 114 145" fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="8" strokeLinecap="round" />
+
+          <circle cx="120" cy="120" r="36" fill="rgba(252,248,241,0.94)" stroke="rgba(230,220,201,0.95)" strokeWidth="1.5" />
         </g>
 
-        <circle cx="90" cy="90" r="68" fill="none" stroke="rgba(201,188,154,0.42)" strokeWidth="1.2" />
-        <circle cx="90" cy="90" r="72" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="5" />
+        <circle cx="120" cy="120" r="94" fill="none" stroke="#DCD0B8" strokeWidth="2.2" />
+        <circle cx="120" cy="120" r="100" fill="none" stroke="rgba(255,255,255,0.82)" strokeWidth="7" />
 
         {WX_ORDER.map((wx) => {
           const item = byWx[wx];
           const pos = LABEL_POS[wx];
           return (
-            <g key={`label-${wx}`} opacity={item.percent <= 3 ? 0.35 : 1}>
-              <text x={pos.x} y={pos.y - 3} textAnchor="middle" dominantBaseline="middle" fill="#FBF8F3" className="font-serif-bazi text-[13px] font-semibold">
+            <g key={`label-${wx}`} opacity={item.percent <= 2 ? 0.45 : 1}>
+              <text
+                x={pos.x}
+                y={pos.y - 5}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={WX_LABEL_FILL[wx]}
+                stroke="rgba(65,54,40,0.12)"
+                strokeWidth="0.45"
+                className="font-serif-bazi text-[18px] font-semibold"
+              >
                 {wx}
               </text>
-              <text x={pos.x} y={pos.y + 13} textAnchor="middle" dominantBaseline="middle" fill="#FBF8F3" className="num text-[10px] font-medium">
+              <text
+                x={pos.x}
+                y={pos.y + 16}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={WX_LABEL_FILL[wx]}
+                className="num text-[12px] font-medium"
+              >
                 {item.percent}%
               </text>
             </g>
           );
         })}
 
-        <text x="90" y="85" textAnchor="middle" dominantBaseline="middle" fill="var(--ink)" className="font-serif-bazi text-[21px] font-semibold">
+        <text x="120" y="116" textAnchor="middle" dominantBaseline="middle" fill="#2D3330" className="font-serif-bazi text-[31px] font-semibold">
           {centerLabel}
         </text>
-        <text x="90" y="108" textAnchor="middle" dominantBaseline="middle" fill="var(--sub)" className="text-[10px] font-medium">
+        <text x="120" y="144" textAnchor="middle" dominantBaseline="middle" fill="#B0A896" className="text-[11px] font-medium">
           五行结构
         </text>
       </svg>
 
-      <div className="w-full max-w-[270px] flex flex-col gap-2">
-        <p className="text-center text-[13.5px] leading-6 text-ink-2">{getSummary(items)}</p>
-        <div className="flex justify-center gap-3">
-          {items.map((item) => (
-            <div key={item.wx} className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: WX_COLOR[item.wx] }} />
-              <span className="text-[10px] text-sub">{WX_LABEL[item.wx]}</span>
-            </div>
-          ))}
+      <div className="w-full max-w-[280px] flex flex-col items-center gap-2">
+        <p className="text-center text-[15px] leading-7 text-ink-2">{getSummary(items)}</p>
+        <div className="rounded-full border border-[rgba(113,159,126,0.45)] px-5 py-1 text-[12px] tracking-[0.18em] text-[var(--brand)]">
+          能量形状
         </div>
       </div>
     </div>
