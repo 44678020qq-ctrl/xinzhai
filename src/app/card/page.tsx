@@ -883,6 +883,7 @@ export default function CardPage() {
                   <WuxingRadarChart
                     wuxingStrength={Object.fromEntries(wxEntries.map(([wx, pct]) => [wx, pct as number]))}
                     size={210}
+                    dayType={card.wuxing_personality}
                   />
                 </div>
               </div>
