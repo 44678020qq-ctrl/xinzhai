@@ -34,12 +34,14 @@ const TEMPLATE_PERCENT: Record<string, number> = {
   水: 35,
 };
 
+const REGION_RENDER_ORDER = ["水", "木", "火", "土", "金"] as const;
+
 const REGION_PATH: Record<string, string> = {
-  木: "M 49 54 C 67 31, 108 24, 137 42 C 151 51, 154 68, 143 79 C 132 91, 106 92, 84 86 C 62 80, 44 69, 49 54 Z",
-  火: "M 142 43 C 174 49, 195 74, 193 106 C 191 139, 165 153, 140 138 C 119 125, 108 105, 119 87 C 130 69, 149 64, 142 43 Z",
-  土: "M 139 136 C 157 120, 184 127, 193 148 C 204 173, 184 199, 158 194 C 133 189, 123 155, 139 136 Z",
-  金: "M 80 159 C 99 143, 127 151, 137 181 C 121 202, 86 203, 64 184 C 54 175, 63 165, 80 159 Z",
-  水: "M 38 76 C 60 52, 95 63, 115 95 C 130 119, 122 151, 94 169 C 68 187, 33 178, 22 150 C 11 122, 19 95, 38 76 Z",
+  木: "M 45 56 C 70 26, 116 21, 145 44 C 162 58, 156 76, 138 86 C 116 99, 86 91, 62 79 C 49 72, 40 64, 45 56 Z",
+  火: "M 140 43 C 177 49, 201 76, 194 111 C 187 146, 156 154, 130 132 C 111 116, 108 96, 123 78 C 136 63, 151 57, 140 43 Z",
+  土: "M 127 128 C 153 109, 189 124, 196 153 C 203 183, 174 204, 145 193 C 119 184, 107 148, 127 128 Z",
+  金: "M 72 158 C 92 139, 123 147, 137 180 C 118 205, 76 205, 55 183 C 45 172, 55 164, 72 158 Z",
+  水: "M 37 77 C 59 51, 96 62, 117 96 C 134 124, 119 159, 86 176 C 57 192, 24 178, 17 147 C 11 120, 20 94, 37 77 Z",
 };
 
 const LABEL_POS: Record<string, { x: number; y: number }> = {
@@ -83,7 +85,7 @@ function clamp(value: number, min: number, max: number) {
 
 function getAreaScale(wx: string, percent: number) {
   const base = TEMPLATE_PERCENT[wx] || 20;
-  return clamp(Math.sqrt(Math.max(2, percent) / base), 0.72, 1.28);
+  return clamp(1 + ((percent - base) / 100) * 0.22, 0.94, 1.06);
 }
 
 export default function WuxingRadarChart({
@@ -154,7 +156,7 @@ export default function WuxingRadarChart({
           <rect x="24" y="24" width="192" height="192" fill="#FBF7EF" />
           <rect x="24" y="24" width="192" height="192" opacity="0.34" filter={`url(#${id}-paper)`} />
 
-          {WX_ORDER.map((wx) => {
+          {REGION_RENDER_ORDER.map((wx) => {
             const item = byWx[wx];
             const emphasis = 0.84 + Math.min(0.12, item.percent / 220);
             const anchor = REGION_ANCHOR[wx];
