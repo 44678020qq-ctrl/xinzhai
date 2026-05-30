@@ -9,20 +9,80 @@ import WuxingRadarChart from "@/components/WuxingRadarChart";
 import { calcShenSha as calcShenShaLocal } from "@/lib/shensha";
 
 const PILLAR_LABELS = ['年柱', '月柱', '日柱', '时柱'];
-const MAJOR_AUSPICIOUS = ['天乙贵人', '太极贵人', '福星贵人', '文昌', '天德贵人', '月德贵人', '驿马', '将星', '禄神', '华盖', '金舆', '红鸾', '天喜'];
+const MAJOR_AUSPICIOUS = ['福星贵人', '天乙贵人', '天德贵人', '月德贵人', '太极贵人', '国印贵人', '文昌贵人', '华盖', '将星', '驿马', '禄神', '金舆', '红鸾', '天喜'];
 
-// ============ 神煞辅助 ============
-const SHENSHA_CATEGORY: Record<string, string> = {
-  '天乙贵人': 'guiRen', '太极贵人': 'guiRen', '福星贵人': 'guiRen',
-  '德秀贵人': 'guiRen', '天德贵人': 'guiRen', '月德贵人': 'guiRen',
-  '驿马': 'dongBian', '将星': 'dongBian',
-  '桃花': 'qingYuan', '红鸾': 'qingYuan', '天喜': 'qingYuan', '咸池': 'qingYuan',
-  '华盖': 'neiXiang', '孤鸾煞': 'neiXiang',
-  '羊刃': 'fengMang', '血刃': 'fengMang', '空亡': 'fengMang',
-  '劫煞': 'fengMang', '童子': 'fengMang', '吊客': 'fengMang',
-  '文昌': 'qiTa', '禄神': 'qiTa', '金舆': 'qiTa', '魁罡': 'qiTa',
-  '八专': 'qiTa', '亡神': 'qiTa', '病符': 'qiTa', '四废': 'qiTa', '十恶大败': 'qiTa',
+// ============ 神煞图鉴母版 ============
+type RarityTier = 'legendary4' | 'legendary3' | 'epic' | 'rare' | 'common' | 'normal' | 'tidal';
+
+type ShenshaAtlasItem = {
+  category: string;
+  seal: string;
+  description: string;
+  rarity: RarityTier;
+  warning?: boolean;
 };
+
+const SHENSHA_ATLAS: Record<string, ShenshaAtlasItem> = {
+  '福星贵人': { category: 'guiRen', seal: '福', description: '福气相随，一生顺遂', rarity: 'legendary4' },
+  '天乙贵人': { category: 'guiRen', seal: '乙', description: '贵人扶持，逢难呈祥', rarity: 'legendary4' },
+  '天德贵人': { category: 'guiRen', seal: '德', description: '贵人眷助，逢凶化吉', rarity: 'legendary4' },
+  '月德贵人': { category: 'guiRen', seal: '月', description: '柔和包容，化解冲突', rarity: 'legendary4' },
+  '太极贵人': { category: 'guiRen', seal: '极', description: '悟性超群，近道而行', rarity: 'legendary3' },
+  '国印贵人': { category: 'guiRen', seal: '印', description: '信用权柄，名望加持', rarity: 'legendary3' },
+  '学堂': { category: 'qiTa', seal: '学', description: '好学敏思，博闻强记', rarity: 'epic' },
+  '词馆': { category: 'qiTa', seal: '词', description: '言辞出众，才华横溢', rarity: 'epic' },
+  '文昌贵人': { category: 'qiTa', seal: '昌', description: '文思敏捷，学业有成', rarity: 'epic' },
+  '华盖': { category: 'neiXiang', seal: '盖', description: '孤高寡淡，精神世界', rarity: 'rare' },
+  '将星': { category: 'dongBian', seal: '将', description: '领导才能，果断有为', rarity: 'epic' },
+  '驿马': { category: 'dongBian', seal: '驿', description: '奔波变动，远行机遇', rarity: 'normal' },
+  '禄神': { category: 'guiRen', seal: '禄', description: '衣禄丰足，生活安稳', rarity: 'rare' },
+  '金舆': { category: 'guiRen', seal: '舆', description: '福禄随身，衣食无忧', rarity: 'epic' },
+  '红鸾': { category: 'qingYuan', seal: '鸾', description: '良缘将至，婚姻喜庆', rarity: 'rare' },
+  '桃花': { category: 'qingYuan', seal: '桃', description: '人缘吸引力，情感感知力', rarity: 'normal' },
+  '天喜': { category: 'qingYuan', seal: '喜', description: '喜庆临门，良缘将至', rarity: 'rare' },
+  '红艳': { category: 'qingYuan', seal: '艳', description: '魅力天成，引人瞩目', rarity: 'rare' },
+  '孤辰': { category: 'neiXiang', seal: '辰', description: '孤立人格，深度思考', rarity: 'tidal', warning: true },
+  '寡宿': { category: 'neiXiang', seal: '寡', description: '内向慢热，情感淡泊', rarity: 'tidal', warning: true },
+  '羊刃': { category: 'fengMang', seal: '刃', description: '锋芒毕露，刚强果决', rarity: 'tidal', warning: true },
+  '劫煞': { category: 'fengMang', seal: '劫', description: '波折挑战，磨砺成长', rarity: 'tidal', warning: true },
+  '灾煞': { category: 'fengMang', seal: '灾', description: '历经波折，方见成长', rarity: 'tidal', warning: true },
+  '天赦贵人': { category: 'guiRen', seal: '赦', description: '逢凶化解，转危为安', rarity: 'legendary3' },
+  '咸池': { category: 'qingYuan', seal: '池', description: '情感丰富，魅力迷人', rarity: 'normal' },
+  '孤鸾': { category: 'neiXiang', seal: '鸾', description: '情感波折，晚婚倾向', rarity: 'tidal', warning: true },
+  '天医': { category: 'guiRen', seal: '医', description: '健康福寿，医缘善缘', rarity: 'epic' },
+  '金神': { category: 'fengMang', seal: '金', description: '刚烈果断，威严自持', rarity: 'epic' },
+  '天罗地网': { category: 'fengMang', seal: '网', description: '环境受限，谨慎守法', rarity: 'tidal', warning: true },
+  '元辰': { category: 'guiRen', seal: '元', description: '先天福泽，贵气内藏', rarity: 'legendary3' },
+  '阴差阳错': { category: 'fengMang', seal: '错', description: '因缘错位，谨言慎行', rarity: 'tidal', warning: true },
+  '飞刃': { category: 'fengMang', seal: '飞', description: '意外伤害，谨慎行事', rarity: 'tidal', warning: true },
+  '十恶大败': { category: 'fengMang', seal: '败', description: '大起大落，克财耗禄', rarity: 'tidal', warning: true },
+  '六秀': { category: 'qiTa', seal: '秀', description: '秀外慧中，气质出众', rarity: 'epic' },
+  '六厄': { category: 'fengMang', seal: '厄', description: '多遇阻滞，坚韧度过', rarity: 'tidal', warning: true },
+  '流霞': { category: 'fengMang', seal: '霞', description: '情绪流动，谨防是非', rarity: 'tidal', warning: true },
+  '童子煞': { category: 'neiXiang', seal: '童', description: '心性纯净，六亲缘薄', rarity: 'tidal', warning: true },
+  '文曲': { category: 'qiTa', seal: '曲', description: '才艺出众，文采斐然', rarity: 'epic' },
+  '华盖煞': { category: 'neiXiang', seal: '煞', description: '孤高清冷，超凡脱俗', rarity: 'tidal', warning: true },
+  '天魁天钺': { category: 'guiRen', seal: '魁', description: '贵人提携，声名远播', rarity: 'legendary3' },
+};
+
+const SHENSHA_ALIAS: Record<string, string> = {
+  '文昌': '文昌贵人',
+  '孤鸾煞': '孤鸾',
+  '童子': '童子煞',
+  '血刃': '飞刃',
+};
+
+function normalizeShenShaName(name: string) {
+  return SHENSHA_ALIAS[name] || name;
+}
+
+function normalizeShenShaNames(names: string[]) {
+  return Array.from(new Set(names.map(normalizeShenShaName).filter(name => Boolean(SHENSHA_ATLAS[name]))));
+}
+
+const SHENSHA_CATEGORY: Record<string, string> = Object.fromEntries(
+  Object.entries(SHENSHA_ATLAS).map(([name, item]) => [name, item.category])
+);
 const CATEGORY_GRADIENT: Record<string, string> = {
   'guiRen': 'bg-gradient-to-br from-[#E8DFD0] to-[#D4C4A8]',
   'dongBian': 'bg-gradient-to-br from-[#E0E8E4] to-[#C8D4CC]',
@@ -34,66 +94,22 @@ const CATEGORY_GRADIENT: Record<string, string> = {
 // ============ 印章单字图标 ============
 // 中心放该神煞的单字印，外圈颜色由稀有度决定（渲染层处理）
 // 风格：方形印章边框 + 中心单字，中式极简
-const SHENSHA_SEAL_CHAR: Record<string, string> = {
-  '天乙贵人': '贵', '太极贵人': '极', '福星贵人': '福', '德秀贵人': '德',
-  '天德贵人': '天', '月德贵人': '月', '文昌': '文', '金舆': '舆',
-  '将星': '将', '学堂词馆': '学', '天厨': '厨',
-  '禄神': '禄', '红鸾': '鸾', '天喜': '喜', '华盖': '盖',
-  '驿马': '驿', '桃花': '桃', '八专': '八', '魁罡': '罡',
-  '孤鸾煞': '孤', '咸池': '池', '空亡': '空', '羊刃': '刃',
-  '血刃': '血', '十恶大败': '败', '亡神': '亡', '劫煞': '劫',
-  '吊客': '吊', '病符': '病', '四废': '废', '童子': '童',
-};
+const SHENSHA_SEAL_CHAR: Record<string, string> = Object.fromEntries(
+  Object.entries(SHENSHA_ATLAS).map(([name, item]) => [name, item.seal])
+);
 
 // 生成印章SVG：方框 + 单字
 function makeSealSvg(char: string): string {
   return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="12" y="12" width="76" height="76" rx="4" fill="none" stroke="#333" stroke-width="3" opacity="0.7"/><text x="50" y="68" text-anchor="middle" font-size="48" fill="#333" font-family="serif" font-weight="bold" opacity="0.85">${char}</text></svg>`;
 }
 
-const SHENSHA_SVG: Record<string, string> = {
-  '天乙贵人': makeSealSvg('贵'),
-  '太极贵人': makeSealSvg('极'),
-  '福星贵人': makeSealSvg('福'),
-  '德秀贵人': makeSealSvg('德'),
-  '天德贵人': makeSealSvg('天'),
-  '月德贵人': makeSealSvg('月'),
-  '驿马': makeSealSvg('驿'),
-  '将星': makeSealSvg('将'),
-  '桃花': makeSealSvg('桃'),
-  '红鸾': makeSealSvg('鸾'),
-  '天喜': makeSealSvg('喜'),
-  '咸池': makeSealSvg('池'),
-  '华盖': makeSealSvg('盖'),
-  '孤鸾煞': makeSealSvg('孤'),
-  '金舆': makeSealSvg('舆'),
-  '八专': makeSealSvg('八'),
-  '魁罡': makeSealSvg('罡'),
-  '空亡': makeSealSvg('空'),
-  '羊刃': makeSealSvg('刃'),
-  '血刃': makeSealSvg('血'),
-  '十恶大败': makeSealSvg('败'),
-  '亡神': makeSealSvg('亡'),
-  '劫煞': makeSealSvg('劫'),
-  '吊客': makeSealSvg('吊'),
-  '病符': makeSealSvg('病'),
-  '四废': makeSealSvg('废'),
-  '童子': makeSealSvg('童'),
-  '文昌': makeSealSvg('文'),
-  '禄神': makeSealSvg('禄'),
-};
+const SHENSHA_SVG: Record<string, string> = Object.fromEntries(
+  Object.entries(SHENSHA_ATLAS).map(([name, item]) => [name, makeSealSvg(item.seal)])
+);
 
-const ALL_SHENSHA_NAMES = [
-  '天乙贵人', '太极贵人', '福星贵人', '文昌', '天德贵人', '月德贵人',
-  '桃花', '红鸾', '天喜', '咸池',
-  '驿马', '将星', '禄神',
-  '华盖', '魁罡', '孤鸾煞', '金舆', '八专',
-  '空亡', '羊刃', '十恶大败', '亡神', '劫煞', '吊客', '病符', '四废',
-  '童子', '德秀贵人', '血刃',
-];
+const ALL_SHENSHA_NAMES = Object.keys(SHENSHA_ATLAS);
 
 // ============ 稀有度系统 ============
-type RarityTier = 'legendary4' | 'legendary3' | 'epic' | 'rare' | 'common' | 'normal' | 'tidal';
-
 interface RarityConfig {
   label: string;
   labelColor: string;
@@ -149,65 +165,10 @@ const RARITY: Record<RarityTier, RarityConfig> = {
   },
 };
 
-// 神煞固定稀有度映射（v0.1 指挥草案）
-// 稀有度 = 神煞自带属性，与出现柱数无关；柱数只做 ·N柱 角标
-const SHENSHA_RARITY: Record<string, RarityTier> = {
-  // golden — 最尊贵·罕见吉神
-  '天乙贵人': 'legendary4',
-  '天德贵人': 'legendary4',
-  '月德贵人': 'legendary4',
-  '三奇贵人': 'legendary4',
-  // legend
-  '德秀贵人': 'legendary3',
-  '太极贵人': 'legendary3',
-  '福星贵人': 'legendary3',
-  '天德合': 'legendary3',
-  '月德合': 'legendary3',
-  '国印贵人': 'legendary3',
-  '国印': 'legendary3',
-  // epic
-  '文昌贵人': 'epic',
-  '天厨贵人': 'epic',
-  '金舆': 'epic',
-  '将星': 'epic',
-  '学堂': 'epic',
-  '词馆': 'epic',
-  '天医': 'epic',
-  '六秀日': 'epic',
-  '十灵日': 'epic',
-  '拱禄': 'epic',
-  // rare
-  '禄神': 'rare',
-  '红鸾': 'rare',
-  '天喜': 'rare',
-  '红艳煞': 'rare',
-  '华盖': 'rare',
-  // normal
-  '驿马': 'normal',
-  '桃花': 'normal',
-  '咸池': 'normal',
-  '八专': 'normal',
-  // tide — 凶/中性
-  '空亡': 'tidal',
-  '孤鸾煞': 'tidal',
-  '孤辰': 'tidal',
-  '寡宿': 'tidal',
-  '童子煞': 'tidal',
-  '吊客': 'tidal',
-  '丧门': 'tidal',
-  '披麻': 'tidal',
-  '羊刃': 'tidal',
-  '血刃': 'tidal',
-  '飞刃': 'tidal',
-  '劫煞': 'tidal',
-  '灾煞': 'tidal',
-  '亡神': 'tidal',
-  '勾绞煞': 'tidal',
-  '阴差阳错': 'tidal',
-  '九丑': 'tidal',
-  '元辰': 'tidal',
-  '天罗地网': 'tidal',
-};
+// 稀有度 = 图鉴母版自带属性，与出现柱数无关；柱数只做 ·N柱 角标
+const SHENSHA_RARITY: Record<string, RarityTier> = Object.fromEntries(
+  Object.entries(SHENSHA_ATLAS).map(([name, item]) => [name, item.rarity])
+);
 
 function getRarity(
   name: string, _count: number, isWarning: boolean
@@ -300,14 +261,22 @@ function translateStrength(strength: string): string {
 function groupShenSha(shenSha: Array<{name: string; position: string | string[]; description: string; warning?: string}>) {
   const grouped: Record<string, {name: string; positions: string[]; description: string; warning?: string}> = {};
   for (const s of shenSha) {
-    if (!grouped[s.name]) {
-      grouped[s.name] = { name: s.name, positions: [], description: s.description, warning: s.warning };
+    const name = normalizeShenShaName(s.name);
+    const atlas = SHENSHA_ATLAS[name];
+    if (!atlas) continue;
+    if (!grouped[name]) {
+      grouped[name] = {
+        name,
+        positions: [],
+        description: atlas.description || s.description,
+        warning: atlas.warning ? '⚠️' : s.warning,
+      };
     }
     // 统一处理单柱或多柱
     const positions = Array.isArray(s.position) ? s.position : [s.position];
     for (const pos of positions) {
-      if (!grouped[s.name].positions.includes(pos)) {
-        grouped[s.name].positions.push(pos);
+      if (!grouped[name].positions.includes(pos)) {
+        grouped[name].positions.push(pos);
       }
     }
   }
@@ -796,7 +765,10 @@ export default function CardPage() {
         { label: '自坐', values: richPillars.map(p => p.pillar.自坐 || '—') },
         { label: '空亡', values: richPillars.map(p => p.pillar.空亡 || '—') },
         { label: '纳音', values: richPillars.map(p => p.pillar.纳音 || '—') },
-        { label: '神煞', values: richPillars.map(p => getPillarShenSha(p.key, richBazi!).length > 0 ? getPillarShenSha(p.key, richBazi!) : ['—']) },
+        { label: '神煞', values: richPillars.map(p => {
+          const names = normalizeShenShaNames(getPillarShenSha(p.key, richBazi!));
+          return names.length > 0 ? names : ['—'];
+        }) },
       ]
     : [];
   const needElements = [...(card.yongShen?.yongShen || []), ...(card.yongShen?.xiShen || [])];
@@ -926,7 +898,7 @@ export default function CardPage() {
                   {groupedShenSha.map((s, i) => {
                     const category = SHENSHA_CATEGORY[s.name] || 'qiTa';
                     const gradient = CATEGORY_GRADIENT[category] || CATEGORY_GRADIENT['qiTa'];
-                    const svgIcon = SHENSHA_SVG[s.name] || SHENSHA_SVG['文昌'];
+                    const svgIcon = SHENSHA_SVG[s.name] || SHENSHA_SVG['文昌贵人'];
                     const count = s.positions.length;
                     const isWarning = !!s.warning;
                     const rarity = getRarity(s.name, count, isWarning);
@@ -1050,7 +1022,7 @@ export default function CardPage() {
 
                 // 获取本柱神煞
                 const pillarShenShaNames = richBazi
-                  ? getPillarShenSha(pillarKeys[i], richBazi)
+                  ? normalizeShenShaNames(getPillarShenSha(pillarKeys[i], richBazi))
                   : [];
 
                 // 获取本柱十神（天干）
@@ -1219,7 +1191,7 @@ export default function CardPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {groupedShenSha.map((s, i) => {
-                    const svgIcon = SHENSHA_SVG[s.name] || SHENSHA_SVG['文昌'];
+                    const svgIcon = SHENSHA_SVG[s.name] || SHENSHA_SVG['文昌贵人'];
                     const count = s.positions.length;
                     const isWarning = !!s.warning;
                     const rarity = getRarity(s.name, count, isWarning);

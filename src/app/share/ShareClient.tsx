@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SHENSHA_SHARE_DATA, isShareableShensha } from "@/lib/shensha-data";
+import { isShareableShensha, resolveShareableShensha } from "@/lib/shensha-data";
 
 export default function ShareClient() {
   const [mounted, setMounted] = useState(false);
@@ -28,7 +28,11 @@ export default function ShareClient() {
     );
   }
 
-  const data = SHENSHA_SHARE_DATA[name];
+  const data = resolveShareableShensha(name);
+
+  if (!data) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-6" style={{ paddingTop: 'max(2rem, env(safe-area-inset-top))' }}>
