@@ -43,11 +43,11 @@ const REGION_PATH: Record<string, string> = {
 };
 
 const LABEL_POS: Record<string, { x: number; y: number }> = {
-  木: { x: 95, y: 63 },
-  火: { x: 157, y: 91 },
-  土: { x: 155, y: 157 },
-  金: { x: 93, y: 181 },
-  水: { x: 56, y: 126 },
+  木: { x: 96, y: 66 },
+  火: { x: 164, y: 88 },
+  土: { x: 160, y: 159 },
+  金: { x: 91, y: 185 },
+  水: { x: 55, y: 128 },
 };
 
 function normalizeStrength(wuxingStrength: Record<string, number>) {
@@ -71,7 +71,7 @@ function getSummary(items: ReturnType<typeof normalizeStrength>) {
 
 export default function WuxingRadarChart({
   wuxingStrength,
-  size = 270,
+  size = 286,
   dayType,
 }: WuxingRadarChartProps) {
   const id = useId().replace(/:/g, "");
@@ -146,7 +146,7 @@ export default function WuxingRadarChart({
           <path d="M 139 78 C 159 82, 173 96, 178 115" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="9" strokeLinecap="round" />
           <path d="M 49 146 C 70 159, 94 159, 114 145" fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="8" strokeLinecap="round" />
 
-          <circle cx="120" cy="120" r="36" fill="rgba(252,248,241,0.94)" stroke="rgba(230,220,201,0.95)" strokeWidth="1.5" />
+          <circle cx="120" cy="120" r="29" fill="rgba(252,248,241,0.94)" stroke="rgba(230,220,201,0.95)" strokeWidth="1.5" />
         </g>
 
         <circle cx="120" cy="120" r="94" fill="none" stroke="#DCD0B8" strokeWidth="2.2" />
@@ -156,16 +156,16 @@ export default function WuxingRadarChart({
           const item = byWx[wx];
           const pos = LABEL_POS[wx];
           return (
-            <g key={`label-${wx}`} opacity={item.percent <= 2 ? 0.45 : 1}>
+            <g key={`label-${wx}`} opacity={item.percent <= 2 ? 0.72 : 1}>
               <text
                 x={pos.x}
                 y={pos.y - 5}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill={WX_LABEL_FILL[wx]}
-                stroke="rgba(65,54,40,0.12)"
-                strokeWidth="0.45"
-                className="font-serif-bazi text-[18px] font-semibold"
+                stroke={wx === "土" || wx === "金" ? "rgba(255,255,255,0.5)" : "rgba(65,54,40,0.18)"}
+                strokeWidth="0.55"
+                className="font-serif-bazi text-[17px] font-semibold"
               >
                 {wx}
               </text>
@@ -175,7 +175,9 @@ export default function WuxingRadarChart({
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill={WX_LABEL_FILL[wx]}
-                className="num text-[12px] font-medium"
+                stroke={wx === "土" || wx === "金" ? "rgba(255,255,255,0.45)" : "rgba(65,54,40,0.12)"}
+                strokeWidth="0.35"
+                className="num text-[11px] font-semibold"
               >
                 {item.percent}%
               </text>
@@ -183,10 +185,10 @@ export default function WuxingRadarChart({
           );
         })}
 
-        <text x="120" y="116" textAnchor="middle" dominantBaseline="middle" fill="#2D3330" className="font-serif-bazi text-[31px] font-semibold">
+        <text x="120" y="116" textAnchor="middle" dominantBaseline="middle" fill="#2D3330" className="font-serif-bazi text-[26px] font-semibold">
           {centerLabel}
         </text>
-        <text x="120" y="144" textAnchor="middle" dominantBaseline="middle" fill="#B0A896" className="text-[11px] font-medium">
+        <text x="120" y="139" textAnchor="middle" dominantBaseline="middle" fill="#B0A896" className="text-[10px] font-medium">
           五行结构
         </text>
       </svg>

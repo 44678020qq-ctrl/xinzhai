@@ -882,7 +882,7 @@ export default function CardPage() {
                 <div className="flex justify-center rounded-[var(--radius-lg)] bg-[var(--gray-50)] py-4">
                   <WuxingRadarChart
                     wuxingStrength={Object.fromEntries(wxEntries.map(([wx, pct]) => [wx, pct as number]))}
-                    size={270}
+                    size={286}
                     dayType={card.wuxing_personality}
                   />
                 </div>
