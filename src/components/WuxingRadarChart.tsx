@@ -26,20 +26,36 @@ const WX_LABEL_FILL: Record<string, string> = {
   水: "#FBF8F0",
 };
 
+const TEMPLATE_PERCENT: Record<string, number> = {
+  木: 20,
+  火: 23,
+  土: 11,
+  金: 11,
+  水: 35,
+};
+
 const REGION_PATH: Record<string, string> = {
-  木: "M 52 46 C 72 26, 116 22, 141 45 C 158 60, 145 84, 118 91 C 91 98, 62 85, 48 66 C 42 57, 44 51, 52 46 Z",
-  火: "M 137 43 C 170 50, 193 78, 187 112 C 181 142, 153 149, 128 128 C 110 113, 108 94, 125 77 C 141 61, 149 50, 137 43 Z",
-  土: "M 129 126 C 151 108, 185 122, 187 153 C 188 181, 156 199, 132 184 C 113 172, 109 143, 129 126 Z",
-  金: "M 76 157 C 94 136, 122 146, 134 184 C 113 203, 78 200, 58 181 C 49 172, 58 162, 76 157 Z",
-  水: "M 38 76 C 57 53, 91 63, 113 94 C 132 122, 113 160, 77 173 C 47 184, 21 161, 22 126 C 22 103, 28 88, 38 76 Z",
+  木: "M 49 54 C 67 31, 108 24, 137 42 C 151 51, 154 68, 143 79 C 132 91, 106 92, 84 86 C 62 80, 44 69, 49 54 Z",
+  火: "M 142 43 C 174 49, 195 74, 193 106 C 191 139, 165 153, 140 138 C 119 125, 108 105, 119 87 C 130 69, 149 64, 142 43 Z",
+  土: "M 139 136 C 157 120, 184 127, 193 148 C 204 173, 184 199, 158 194 C 133 189, 123 155, 139 136 Z",
+  金: "M 80 159 C 99 143, 127 151, 137 181 C 121 202, 86 203, 64 184 C 54 175, 63 165, 80 159 Z",
+  水: "M 38 76 C 60 52, 95 63, 115 95 C 130 119, 122 151, 94 169 C 68 187, 33 178, 22 150 C 11 122, 19 95, 38 76 Z",
 };
 
 const LABEL_POS: Record<string, { x: number; y: number }> = {
-  木: { x: 96, y: 63 },
-  火: { x: 163, y: 91 },
-  土: { x: 161, y: 159 },
+  木: { x: 95, y: 62 },
+  火: { x: 164, y: 91 },
+  土: { x: 165, y: 159 },
   金: { x: 91, y: 184 },
-  水: { x: 55, y: 129 },
+  水: { x: 57, y: 128 },
+};
+
+const REGION_ANCHOR: Record<string, { x: number; y: number }> = {
+  木: { x: 96, y: 61 },
+  火: { x: 160, y: 96 },
+  土: { x: 165, y: 161 },
+  金: { x: 92, y: 182 },
+  水: { x: 61, y: 127 },
 };
 
 function normalizeStrength(wuxingStrength: Record<string, number>) {
@@ -59,6 +75,15 @@ function getSummary(items: ReturnType<typeof normalizeStrength>) {
   if (!top) return "能量结构平稳";
   if (low.length >= 2) return `${top.wx}较显，${low.join("")}偏低`;
   return `${top.wx}较显，整体流动`;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getAreaScale(wx: string, percent: number) {
+  const base = TEMPLATE_PERCENT[wx] || 20;
+  return clamp(Math.sqrt(Math.max(2, percent) / base), 0.72, 1.28);
 }
 
 export default function WuxingRadarChart({
@@ -114,10 +139,10 @@ export default function WuxingRadarChart({
             />
           </filter>
           {WX_ORDER.map((wx) => (
-            <radialGradient key={wx} id={`${id}-${wx}`} cx="38%" cy="28%" r="82%">
-              <stop offset="0%" stopColor={WX_COLOR[wx]} stopOpacity="0.78" />
-              <stop offset="58%" stopColor={WX_COLOR[wx]} stopOpacity="0.6" />
-              <stop offset="100%" stopColor={WX_COLOR[wx]} stopOpacity="0.43" />
+            <radialGradient key={wx} id={`${id}-${wx}`} cx="36%" cy="26%" r="86%">
+              <stop offset="0%" stopColor={WX_COLOR[wx]} stopOpacity="0.86" />
+              <stop offset="56%" stopColor={WX_COLOR[wx]} stopOpacity="0.64" />
+              <stop offset="100%" stopColor={WX_COLOR[wx]} stopOpacity="0.46" />
             </radialGradient>
           ))}
         </defs>
@@ -132,17 +157,20 @@ export default function WuxingRadarChart({
           {WX_ORDER.map((wx) => {
             const item = byWx[wx];
             const emphasis = 0.84 + Math.min(0.12, item.percent / 220);
+            const anchor = REGION_ANCHOR[wx];
+            const scale = getAreaScale(wx, item.percent);
             return (
-              <path
-                key={wx}
-                d={REGION_PATH[wx]}
-                fill={`url(#${id}-${wx})`}
-                opacity={item.percent <= 2 ? 0.42 : emphasis}
-                stroke="#FBF7EF"
-                strokeWidth="9.5"
-                strokeLinejoin="round"
-                filter={`url(#${id}-watercolor)`}
-              />
+              <g key={wx} transform={`translate(${anchor.x} ${anchor.y}) scale(${scale}) translate(${-anchor.x} ${-anchor.y})`}>
+                <path
+                  d={REGION_PATH[wx]}
+                  fill={`url(#${id}-${wx})`}
+                  opacity={item.percent <= 2 ? 0.42 : emphasis}
+                  stroke="#FBF7EF"
+                  strokeWidth="9.5"
+                  strokeLinejoin="round"
+                  filter={`url(#${id}-watercolor)`}
+                />
+              </g>
             );
           })}
 
