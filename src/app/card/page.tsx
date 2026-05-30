@@ -992,10 +992,6 @@ export default function CardPage() {
             <div className="text-center flex flex-col items-center gap-2">
               <div className="flex items-center gap-3 flex-wrap justify-center">
                 <span className="text-[28px] leading-none font-semibold tracking-normal font-serif-bazi" style={{ color: WX_COLOR[card.wuxing_personality?.slice(-1)] }}>{card.wuxing_personality}</span>
-                <span className="text-sm text-sub">·</span>
-                <span className="text-sm text-ink font-medium">{card.strength?.level || '旺衰待定'}</span>
-                <span className="text-sm text-sub">·</span>
-                <span className="num text-[11px] text-sub">五行 {wxEntries.map(([wx]) => wx).join(' ')}</span>
               </div>
             </div>
 
