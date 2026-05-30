@@ -1020,11 +1020,6 @@ export default function CardPage() {
                 const isDayPillar = i === 2;
                 const rich = item.pillar;
 
-                // 获取本柱神煞
-                const pillarShenShaNames = richBazi
-                  ? normalizeShenShaNames(getPillarShenSha(pillarKeys[i], richBazi))
-                  : [];
-
                 // 获取本柱十神（天干）
                 const ganShishen = rich?.天干?.十神 || '';
 
@@ -1092,26 +1087,6 @@ export default function CardPage() {
                           </div>
                         </div>
 
-                        {/* 神煞印章墙（本柱） */}
-                        {pillarShenShaNames.length > 0 && (
-                          <div className="flex flex-wrap gap-1 justify-center max-h-14 overflow-hidden">
-                            {pillarShenShaNames.map((name, si) => {
-                              const rarity = getRarity(name, 1, SHENSHA_RARITY[name] === 'tidal');
-                              const cfg = RARITY[rarity];
-                              const sealChar = SHENSHA_SEAL_CHAR[name] || '神';
-                              return (
-                                <span
-                                  key={si}
-                                  className="inline-flex items-center justify-center w-5 h-5 rounded-md text-[9px] font-semibold text-white"
-                                  style={{ background: cfg.borderColor }}
-                                  title={name}
-                                >
-                                  {sealChar}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
                       </>
                     ) : (
                       // 降级：使用简单数据
