@@ -874,12 +874,8 @@ export default function CardPage() {
 
             {/* 2. 五行能量形状图 */}
             {wxEntries.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-medium text-ink">能量形状</p>
-                  <p className="text-[10.5px] tracking-[2px] text-sub">木 火 土 金 水</p>
-                </div>
-                <div className="flex justify-center rounded-[var(--radius-lg)] bg-[var(--gray-50)] py-4">
+              <div className="flex flex-col">
+                <div className="flex justify-center py-3">
                   <WuxingRadarChart
                     wuxingStrength={Object.fromEntries(wxEntries.map(([wx, pct]) => [wx, pct as number]))}
                     size={286}

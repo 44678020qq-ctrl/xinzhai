@@ -26,28 +26,20 @@ const WX_LABEL_FILL: Record<string, string> = {
   水: "#FBF8F0",
 };
 
-const WX_LABEL: Record<string, string> = {
-  木: "生长",
-  火: "热度",
-  土: "承接",
-  金: "边界",
-  水: "流动",
-};
-
 const REGION_PATH: Record<string, string> = {
-  木: "M 59 50 C 79 31, 116 29, 139 49 C 153 61, 146 83, 124 92 C 100 102, 70 90, 56 72 C 49 63, 51 56, 59 50 Z",
-  火: "M 137 48 C 169 54, 190 81, 184 113 C 178 145, 149 151, 126 130 C 109 115, 108 95, 125 78 C 139 64, 148 54, 137 48 Z",
-  土: "M 127 129 C 151 111, 184 126, 183 157 C 181 182, 153 198, 130 184 C 110 171, 108 146, 127 129 Z",
-  金: "M 75 158 C 91 139, 119 147, 131 184 C 113 201, 80 199, 60 183 C 51 175, 58 165, 75 158 Z",
-  水: "M 42 78 C 60 56, 93 66, 112 96 C 130 124, 112 158, 78 170 C 49 180, 26 160, 25 127 C 24 105, 29 90, 42 78 Z",
+  木: "M 52 46 C 72 26, 116 22, 141 45 C 158 60, 145 84, 118 91 C 91 98, 62 85, 48 66 C 42 57, 44 51, 52 46 Z",
+  火: "M 137 43 C 170 50, 193 78, 187 112 C 181 142, 153 149, 128 128 C 110 113, 108 94, 125 77 C 141 61, 149 50, 137 43 Z",
+  土: "M 129 126 C 151 108, 185 122, 187 153 C 188 181, 156 199, 132 184 C 113 172, 109 143, 129 126 Z",
+  金: "M 76 157 C 94 136, 122 146, 134 184 C 113 203, 78 200, 58 181 C 49 172, 58 162, 76 157 Z",
+  水: "M 38 76 C 57 53, 91 63, 113 94 C 132 122, 113 160, 77 173 C 47 184, 21 161, 22 126 C 22 103, 28 88, 38 76 Z",
 };
 
 const LABEL_POS: Record<string, { x: number; y: number }> = {
-  木: { x: 96, y: 66 },
-  火: { x: 164, y: 88 },
-  土: { x: 160, y: 159 },
-  金: { x: 91, y: 185 },
-  水: { x: 55, y: 128 },
+  木: { x: 96, y: 63 },
+  火: { x: 163, y: 91 },
+  土: { x: 161, y: 159 },
+  金: { x: 91, y: 184 },
+  水: { x: 55, y: 129 },
 };
 
 function normalizeStrength(wuxingStrength: Record<string, number>) {
@@ -81,6 +73,18 @@ export default function WuxingRadarChart({
 
   return (
     <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-3">
+        <h3 className="font-serif-bazi text-[25px] font-semibold leading-none text-ink">能量形状</h3>
+        <div className="flex items-center gap-5 text-[15px] font-medium">
+          {WX_ORDER.map((wx) => (
+            <span key={wx} style={{ color: WX_COLOR[wx] }}>
+              {wx}
+            </span>
+          ))}
+        </div>
+        <span className="h-1.5 w-1.5 rounded-full bg-[rgba(193,187,174,0.8)]" />
+      </div>
+
       <svg
         width={size}
         height={size}
@@ -91,15 +95,15 @@ export default function WuxingRadarChart({
       >
         <defs>
           <clipPath id={`${id}-orb-clip`}>
-            <circle cx="120" cy="120" r="94" />
+            <circle cx="120" cy="120" r="96" />
           </clipPath>
           <filter id={`${id}-shadow`} x="-25%" y="-25%" width="150%" height="150%">
             <feDropShadow dx="0" dy="14" stdDeviation="14" floodColor="#463F32" floodOpacity="0.1" />
           </filter>
           <filter id={`${id}-watercolor`} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="12" result="texture" />
-            <feDisplacementMap in="SourceGraphic" in2="texture" scale="1.8" xChannelSelector="R" yChannelSelector="G" />
-            <feGaussianBlur stdDeviation="0.18" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="4" seed="12" result="texture" />
+            <feDisplacementMap in="SourceGraphic" in2="texture" scale="1.15" xChannelSelector="R" yChannelSelector="G" />
+            <feGaussianBlur stdDeviation="0.08" />
           </filter>
           <filter id={`${id}-paper`} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
             <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="paperNoise" />
@@ -118,8 +122,8 @@ export default function WuxingRadarChart({
           ))}
         </defs>
 
-        <circle cx="120" cy="120" r="102" fill="rgba(252,248,241,0.78)" filter={`url(#${id}-shadow)`} />
-        <circle cx="120" cy="120" r="96" fill="#FBF7EF" stroke="#E9DFC9" strokeWidth="2" />
+        <circle cx="120" cy="120" r="103" fill="rgba(252,248,241,0.78)" filter={`url(#${id}-shadow)`} />
+        <circle cx="120" cy="120" r="98" fill="#FBF7EF" stroke="#E1D5BB" strokeWidth="2.4" />
 
         <g clipPath={`url(#${id}-orb-clip)`}>
           <rect x="24" y="24" width="192" height="192" fill="#FBF7EF" />
@@ -127,7 +131,7 @@ export default function WuxingRadarChart({
 
           {WX_ORDER.map((wx) => {
             const item = byWx[wx];
-            const emphasis = 0.78 + Math.min(0.18, item.percent / 180);
+            const emphasis = 0.84 + Math.min(0.12, item.percent / 220);
             return (
               <path
                 key={wx}
@@ -135,7 +139,7 @@ export default function WuxingRadarChart({
                 fill={`url(#${id}-${wx})`}
                 opacity={item.percent <= 2 ? 0.42 : emphasis}
                 stroke="#FBF7EF"
-                strokeWidth="8"
+                strokeWidth="9.5"
                 strokeLinejoin="round"
                 filter={`url(#${id}-watercolor)`}
               />
@@ -146,11 +150,11 @@ export default function WuxingRadarChart({
           <path d="M 139 78 C 159 82, 173 96, 178 115" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="9" strokeLinecap="round" />
           <path d="M 49 146 C 70 159, 94 159, 114 145" fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="8" strokeLinecap="round" />
 
-          <circle cx="120" cy="120" r="29" fill="rgba(252,248,241,0.94)" stroke="rgba(230,220,201,0.95)" strokeWidth="1.5" />
+          <circle cx="120" cy="120" r="31" fill="rgba(252,248,241,0.95)" stroke="rgba(230,220,201,0.95)" strokeWidth="1.4" />
         </g>
 
-        <circle cx="120" cy="120" r="94" fill="none" stroke="#DCD0B8" strokeWidth="2.2" />
-        <circle cx="120" cy="120" r="100" fill="none" stroke="rgba(255,255,255,0.82)" strokeWidth="7" />
+        <circle cx="120" cy="120" r="96" fill="none" stroke="#D7C9AA" strokeWidth="2.2" />
+        <circle cx="120" cy="120" r="101" fill="none" stroke="rgba(255,255,255,0.86)" strokeWidth="7" />
 
         {WX_ORDER.map((wx) => {
           const item = byWx[wx];
@@ -165,7 +169,7 @@ export default function WuxingRadarChart({
                 fill={WX_LABEL_FILL[wx]}
                 stroke={wx === "土" || wx === "金" ? "rgba(255,255,255,0.5)" : "rgba(65,54,40,0.18)"}
                 strokeWidth="0.55"
-                className="font-serif-bazi text-[17px] font-semibold"
+                className="font-serif-bazi text-[17px] font-medium"
               >
                 {wx}
               </text>
@@ -177,7 +181,7 @@ export default function WuxingRadarChart({
                 fill={WX_LABEL_FILL[wx]}
                 stroke={wx === "土" || wx === "金" ? "rgba(255,255,255,0.45)" : "rgba(65,54,40,0.12)"}
                 strokeWidth="0.35"
-                className="num text-[11px] font-semibold"
+                className="num text-[11px] font-medium"
               >
                 {item.percent}%
               </text>
@@ -185,19 +189,13 @@ export default function WuxingRadarChart({
           );
         })}
 
-        <text x="120" y="116" textAnchor="middle" dominantBaseline="middle" fill="#2D3330" className="font-serif-bazi text-[26px] font-semibold">
+        <text x="120" y="116" textAnchor="middle" dominantBaseline="middle" fill="#2C6B9E" className="font-serif-bazi text-[25px] font-medium">
           {centerLabel}
-        </text>
-        <text x="120" y="139" textAnchor="middle" dominantBaseline="middle" fill="#B0A896" className="text-[10px] font-medium">
-          五行结构
         </text>
       </svg>
 
       <div className="w-full max-w-[280px] flex flex-col items-center gap-2">
         <p className="text-center text-[15px] leading-7 text-ink-2">{getSummary(items)}</p>
-        <div className="rounded-full border border-[rgba(113,159,126,0.45)] px-5 py-1 text-[12px] tracking-[0.18em] text-[var(--brand)]">
-          能量形状
-        </div>
       </div>
     </div>
   );
