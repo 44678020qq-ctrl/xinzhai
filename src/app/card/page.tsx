@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import type { PillarDetail, RichBazi } from "@/lib/bazi-rich";
 import { WX_COLOR, getPillarShenSha, TEN_GOD_LABEL } from "@/lib/bazi-rich";
 import { useRouter } from "next/navigation";
 import { InkMark } from "@/components/InkMark";
 import WuxingRadarChart from "@/components/WuxingRadarChart";
 import { calcShenSha as calcShenShaLocal } from "@/lib/shensha";
+import { resolveShareableShensha } from "@/lib/shensha-data";
 
 const PILLAR_LABELS = ['年柱', '月柱', '日柱', '时柱'];
 const MAJOR_AUSPICIOUS = ['福星贵人', '天乙贵人', '天德贵人', '月德贵人', '太极贵人', '国印贵人', '文昌贵人', '华盖', '将星', '驿马', '禄神', '金舆', '红鸾', '天喜'];
+const SHENSHA_CARD_BACK_IMAGE = '/shensha-card-back.png?v=202606011038';
 
 // ============ 神煞图鉴母版 ============
 type RarityTier = 'legendary4' | 'legendary3' | 'epic' | 'rare' | 'common' | 'normal' | 'tidal';
@@ -283,247 +285,107 @@ function groupShenSha(shenSha: Array<{name: string; position: string | string[];
   return Object.values(grouped);
 }
 
-// ============ 粒子组件 ============
-function ParticleBurst({ color, active }: { color: string; active: boolean }) {
-  if (!active) return null;
-  const particles = Array.from({ length: 16 });
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-full">
-      {particles.map((_, i) => {
-        const angle = (i / 16) * 360;
-        const distance = 40 + Math.random() * 30;
-        const size = 4 + Math.random() * 4;
-        const delay = Math.random() * 0.3;
-        const key = `p-${i}`;
-        return (
-          <div
-            key={key}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: size,
-              height: size,
-              borderRadius: '50%',
-              background: color,
-              opacity: 0,
-              animation: `burst-${i} 0.6s ease-out ${delay}s forwards`,
-              transform: `translate(-50%, -50%)`,
-              boxShadow: `0 0 ${size * 2}px ${color}`,
-            }}
-          />
-        );
-      })}
-      <style>{`
-        ${particles.map((_, i) => {
-          const angle = (i / 16) * 360;
-          return `@keyframes burst-${i} { 0%{opacity:1;transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(calc(-50% + ${Math.cos(angle * Math.PI / 180) * 60}px), calc(-50% + ${Math.sin(angle * Math.PI / 180) * 60}px)) scale(0.3)} }`;
-        }).join('\n')}
-      `}</style>
-    </div>
-  );
-}
-
 // ============ 开卡揭示组件 ============
-type RevealPhase = 'idle' | 'charging' | 'flipping' | 'revealed';
-
 function CardReveal({
-  rarity,
   svgIcon,
+  image,
   name,
   position,
   description,
   warning,
   onClose,
 }: {
-  rarity: RarityTier;
   svgIcon: string;
+  image?: string;
   name: string;
   position: string;
   description: string;
   warning?: string;
   onClose: () => void;
 }) {
-  const [phase, setPhase] = useState<RevealPhase>('idle');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cfg = RARITY[rarity];
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  const startReveal = useCallback(() => {
-    setPhase('charging');
-    const chargeMs = 800 + cfg.tier * 120;
-    timerRef.current = setTimeout(() => {
-      setPhase('flipping');
-      timerRef.current = setTimeout(() => {
-        setPhase('revealed');
-      }, 350);
-    }, chargeMs);
-  }, [cfg.tier]);
+  const [flipped, setFlipped] = useState(false);
 
   useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
-
-  const isWarning = rarity === 'tidal';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.3s ease' }}
-      onClick={phase === 'revealed' ? onClose : undefined}
+      className="fixed inset-0 z-50 flex items-center justify-center px-6 py-8"
+      style={{ background: 'rgba(246,242,234,0.56)', backdropFilter: 'blur(10px)' }}
+      onClick={onClose}
     >
-      <style>{`
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes breathe { 0%,100%{box-shadow:0 0 20px ${cfg.glowColor}44} 50%{box-shadow:0 0 45px ${cfg.glowColor}88} }
-        @keyframes chargeShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-3px) rotate(-1deg)} 40%{transform:translateX(3px) rotate(1deg)} 60%{transform:translateX(-2px) rotate(-0.5deg)} 80%{transform:translateX(2px) rotate(0.5deg)} }
-        @keyframes flipCard { 0%{transform:perspective(800px) rotateY(0deg) scale(1)} 50%{transform:perspective(800px) rotateY(90deg) scale(0.9)} 100%{transform:perspective(800px) rotateY(180deg) scale(1)} }
-        @keyframes popIn { 0%{transform:scale(0.7);opacity:0} 60%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
-        @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
-        @keyframes floatUp { 0%{opacity:0;transform:translateY(20px) scale(0.8)} 40%{opacity:1} 100%{opacity:0;transform:translateY(-60px) scale(1.2)} }
-      `}</style>
-
-      {/* 粒子迸发 */}
-      <ParticleBurst color={cfg.burstColor} active={phase === 'revealed'} />
-
-      {/* 关闭按钮 */}
-      {phase === 'revealed' && (
-        <button
-          onClick={onClose}
-          className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/20 text-white text-sm flex items-center justify-center hover:bg-white/30 transition-colors"
+      <div
+        className="relative block w-[min(76vw,300px)] bg-transparent p-0 text-left outline-none"
+        style={{
+          aspectRatio: '882 / 1313',
+          perspective: '1200px',
+        }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div
+          className="relative h-full w-full transition-transform duration-500 ease-[cubic-bezier(.22,1,.36,1)]"
+          style={{
+            transformStyle: 'preserve-3d',
+            transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          }}
         >
-          ✕
-        </button>
-      )}
-
-      {/* 卡片容器 */}
-      <div className="relative flex flex-col items-center gap-4 w-full max-w-xs">
-
-        {/* 阶段指示 */}
-        {phase === 'idle' && (
-          <div className="text-center flex flex-col items-center gap-4">
-            <p className="text-white/60 text-xs tracking-widest">点击卡背开始揭示</p>
-            {/* 卡背 */}
-            <div
-              className="w-52 h-64 rounded-3xl flex flex-col items-center justify-center gap-4 cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 select-none"
-              style={{
-                background: `linear-gradient(135deg, #1C1917 0%, #292524 50%, #1C1917 100%)`,
-                border: `2px solid ${cfg.borderColor}`,
-                boxShadow: `0 0 30px ${cfg.glowColor}33, 0 20px 60px rgba(0,0,0,0.5)`,
-                animation: 'breathe 2.4s ease-in-out infinite',
-              }}
-              onClick={startReveal}
-            >
-              {/* 斋印 */}
-              <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-                <span className="text-2xl text-white/80">斋</span>
-              </div>
-              {/* 装饰线条 */}
-              <div className="w-24 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
-              <p className="text-white/30 text-xs tracking-[3px] font-light">SHEN SHA</p>
-            </div>
-          </div>
-        )}
-
-        {/* 蓄力中 */}
-        {phase === 'charging' && (
-          <div className="text-center flex flex-col items-center gap-4">
-            <p className="text-white/80 text-sm font-medium tracking-wide" style={{ animation: 'chargeShake 0.1s infinite' }}>
-              能量汇聚中…
-            </p>
-            <div
-              className="w-52 h-64 rounded-3xl flex items-center justify-center"
-              style={{
-                background: `linear-gradient(135deg, #1C1917, #292524)`,
-                border: `2px solid ${cfg.borderColor}`,
-                boxShadow: `0 0 60px ${cfg.glowColor}66, 0 20px 60px rgba(0,0,0,0.5)`,
-                animation: `chargeShake 0.08s infinite, breathe 1s ease-in-out infinite`,
-              }}
-            >
-              <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-                <span className="text-2xl text-white/80">斋</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 翻牌 */}
-        {phase === 'flipping' && (
-          <div
-            className="w-52 h-64 rounded-3xl"
+          <img
+            src={SHENSHA_CARD_BACK_IMAGE}
+            alt={`${name} 神煞卡背`}
+            className="absolute inset-0 block h-full w-full cursor-pointer select-none object-contain"
             style={{
-              animation: 'flipCard 0.35s ease-in forwards',
-              transformStyle: 'preserve-3d',
-              perspective: '800px',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+            }}
+            draggable={false}
+            onClick={() => setFlipped(true)}
+          />
+          <div
+            className="absolute inset-0 flex h-full w-full flex-col items-center justify-center rounded-[26px] px-8 py-10 text-center"
+            style={{
+              background: '#F8F1E6',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
             }}
           >
-            <div className="w-full h-full rounded-3xl flex items-center justify-center"
-              style={{ background: '#1C1917', border: `2px solid ${cfg.borderColor}` }} />
-          </div>
-        )}
-
-        {/* 揭示结果 */}
-        {phase === 'revealed' && (
-          <div
-            className="w-full flex flex-col items-center gap-5"
-            style={{ animation: 'popIn 0.45s cubic-bezier(.34,1.56,.64,1) forwards' }}
-          >
-            {/* 稀有度标签 */}
-            <div
-              className="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider"
-              style={{ background: `${cfg.borderColor}22`, color: cfg.labelColor, border: `1px solid ${cfg.borderColor}44` }}
-            >
-              {cfg.label}
-            </div>
-
-            {/* 神煞徽章 */}
-            <div
-              className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 ${cfg.bgClass}`}
-              style={{
-                border: `3px solid ${cfg.borderColor}`,
-                boxShadow: `0 0 40px ${cfg.glowColor}55, 0 0 80px ${cfg.glowColor}22`,
-              }}
-            >
-              <span className="text-5xl w-16 h-16" dangerouslySetInnerHTML={{ __html: svgIcon }} />
-              {rarity === 'legendary4' && (
-                <div
-                  className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.3) 50%, transparent 100%)',
-                    backgroundSize: '200% 100%',
-                    animation: 'shimmer 1.5s linear infinite',
-                  }}
+            <div className="mb-5 flex w-full justify-center">
+              {image ? (
+                <img
+                  src={image}
+                  alt={name}
+                  className="w-[240px] max-w-full object-contain"
+                  draggable={false}
                 />
+              ) : (
+                <span className="h-28 w-28 text-ink/80" dangerouslySetInnerHTML={{ __html: svgIcon }} />
               )}
             </div>
-
-            {/* 神煞名称 */}
-            <div className="text-center flex flex-col gap-1">
-              <h3 className="text-2xl font-bold text-white tracking-widest">{name}</h3>
-              <p className="text-white/40 text-xs">{position}</p>
-            </div>
-
-            {/* 描述 */}
-            <div className="w-full bg-white/8 rounded-2xl p-4">
-              <p className="text-white/80 text-sm leading-relaxed text-center">{description}</p>
-              {warning && (
-                <div className="mt-2 flex items-center justify-center gap-1">
-                  <span className="text-amber-400 text-xs">⚠️ {warning}</span>
-                </div>
-              )}
-            </div>
-
-            {/* 分享入口 */}
+            <h3 className="text-[26px] font-medium leading-tight text-ink">{name}</h3>
+            <p className="mt-3 text-[12px] leading-5 text-sub">{position}</p>
+            <p className="mt-5 text-[14px] leading-7 text-ink-2">{description}</p>
+            {warning && (
+              <p className="mt-4 text-[12px] leading-5 text-sub">{warning}</p>
+            )}
             {MAJOR_AUSPICIOUS.includes(name) && (
               <button
-                onClick={(e) => { e.stopPropagation(); window.location.href = `/share?name=${encodeURIComponent(name)}`; }}
-                className="px-5 py-2 rounded-xl text-white text-xs font-medium transition-all hover:scale-105"
-                style={{ background: `${cfg.borderColor}33`, border: `1px solid ${cfg.borderColor}66` }}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  window.location.href = `/share?name=${encodeURIComponent(name)}`;
+                }}
+                className="mt-8 rounded-full bg-white/70 px-4 py-2 text-[12px] font-medium text-ink transition-colors hover:bg-white"
               >
-                分享这张神煞 →
+                分享这张神煞
               </button>
             )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -570,7 +432,7 @@ export default function CardPage() {
   const [richBazi, setRichBazi] = useState<RichBazi | null>(null);
   const [loading, setLoading] = useState(true);
   const [engine, setEngine] = useState<string>("");
-  const [revealTarget, setRevealTarget] = useState<{name: string; svgIcon: string; rarity: RarityTier; position: string; description: string; warning?: string} | null>(null);
+  const [revealTarget, setRevealTarget] = useState<{name: string; svgIcon: string; image?: string; rarity: RarityTier; position: string; description: string; warning?: string} | null>(null);
   const [viewMode, setViewMode] = useState<'energy' | 'professional'>('energy');
 
   useEffect(() => {
@@ -899,6 +761,7 @@ export default function CardPage() {
                     const category = SHENSHA_CATEGORY[s.name] || 'qiTa';
                     const gradient = CATEGORY_GRADIENT[category] || CATEGORY_GRADIENT['qiTa'];
                     const svgIcon = SHENSHA_SVG[s.name] || SHENSHA_SVG['文昌贵人'];
+                    const shenshaImage = resolveShareableShensha(s.name)?.image;
                     const count = s.positions.length;
                     const isWarning = !!s.warning;
                     const rarity = getRarity(s.name, count, isWarning);
@@ -918,7 +781,7 @@ export default function CardPage() {
                           }}
                           onClick={() => {
                             setRevealTarget({
-                              name: s.name, svgIcon, rarity, position: s.positions.join('·'),
+                              name: s.name, svgIcon, image: shenshaImage, rarity, position: s.positions.join('·'),
                               description: s.description, warning: s.warning,
                             });
                           }}
@@ -946,7 +809,16 @@ export default function CardPage() {
                           {isWarning && (
                             <div className="absolute -inset-1 rounded-full pointer-events-none" style={{ border: '1.5px dashed #22D3EE44' }} />
                           )}
-                          <span className="relative z-10 w-6 h-6" dangerouslySetInnerHTML={{ __html: svgIcon }} />
+                          {shenshaImage ? (
+                            <img
+                              src={shenshaImage}
+                              alt={s.name}
+                              className="relative z-10 h-14 w-14 rounded-full object-cover"
+                              draggable={false}
+                            />
+                          ) : (
+                            <span className="relative z-10 w-6 h-6" dangerouslySetInnerHTML={{ __html: svgIcon }} />
+                          )}
                           {/* 多柱角标 */}
                           {count > 1 && (
                             <div
@@ -1163,6 +1035,7 @@ export default function CardPage() {
                 <div className="grid grid-cols-2 gap-2">
                   {groupedShenSha.map((s, i) => {
                     const svgIcon = SHENSHA_SVG[s.name] || SHENSHA_SVG['文昌贵人'];
+                    const shenshaImage = resolveShareableShensha(s.name)?.image;
                     const count = s.positions.length;
                     const isWarning = !!s.warning;
                     const rarity = getRarity(s.name, count, isWarning);
@@ -1173,16 +1046,25 @@ export default function CardPage() {
                         className="min-w-0 rounded-[var(--radius)] bg-[var(--gray-50)] border border-line px-3 py-2.5 flex items-center gap-2 text-left active:scale-[0.99] transition focus:outline-none focus:ring-2 focus:ring-accent/20"
                         onClick={() => {
                           setRevealTarget({
-                            name: s.name, svgIcon, rarity, position: s.positions.join('·'),
+                            name: s.name, svgIcon, image: shenshaImage, rarity, position: s.positions.join('·'),
                             description: s.description, warning: s.warning,
                           });
                         }}
                       >
-                        <span
-                          className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-xl text-[11px] font-semibold text-white"
-                          style={{ background: cfg.borderColor }}
-                          dangerouslySetInnerHTML={{ __html: svgIcon }}
-                        />
+                        {shenshaImage ? (
+                          <img
+                            src={shenshaImage}
+                            alt={s.name}
+                            className="h-8 w-8 shrink-0 rounded-xl object-cover"
+                            draggable={false}
+                          />
+                        ) : (
+                          <span
+                            className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-xl text-[11px] font-semibold text-white"
+                            style={{ background: cfg.borderColor }}
+                            dangerouslySetInnerHTML={{ __html: svgIcon }}
+                          />
+                        )}
                         <span className="min-w-0 flex flex-col gap-0.5">
                           <span className="text-[11px] text-ink font-medium truncate">{s.name}</span>
                           <span className="text-[9px] text-sub truncate">{s.positions.join(' · ')}{isWarning ? ' · 需留意' : ''}</span>

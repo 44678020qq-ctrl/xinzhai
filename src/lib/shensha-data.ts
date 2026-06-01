@@ -8,6 +8,7 @@ export interface ShenshaShareData {
   tintColor: string;
   description: string;
   miniLabel: string;
+  image: string;
 }
 
 const TINTS: Record<string, { tint: string; tintColor: string }> = {
@@ -62,10 +63,53 @@ const RAW_SHENSHA: Array<[string, string, string, string]> = [
   ['天魁天钺', 'guiRen', '贵人 · 声名', '贵人提携，声名远播。'],
 ];
 
+const SHENSHA_IMAGES: Record<string, string> = {
+  福星贵人: '/shensha-icons/fuxing-guiren.png',
+  天乙贵人: '/shensha-icons/tianyi-guiren.png',
+  天德贵人: '/shensha-icons/tiande-guiren.png',
+  月德贵人: '/shensha-icons/yuede-guiren.png',
+  太极贵人: '/shensha-icons/taiji-guiren.png',
+  国印贵人: '/shensha-icons/guoyin-guiren.png',
+  学堂: '/shensha-icons/xuetang.png',
+  词馆: '/shensha-icons/ciguan.png',
+  文昌贵人: '/shensha-icons/wenchang-guiren.png',
+  华盖: '/shensha-icons/huagai.png',
+  将星: '/shensha-icons/jiangxing.png',
+  驿马: '/shensha-icons/yima.png',
+  禄神: '/shensha-icons/lushen.png',
+  金舆: '/shensha-icons/jinyu.png',
+  红鸾: '/shensha-icons/hongluan.png',
+  桃花: '/shensha-icons/taohua.png',
+  天喜: '/shensha-icons/tianxi.png',
+  红艳: '/shensha-icons/hongyan.png',
+  孤辰: '/shensha-icons/guchen.png',
+  寡宿: '/shensha-icons/guasu.png',
+  羊刃: '/shensha-icons/yangren.png',
+  劫煞: '/shensha-icons/jiesha.png',
+  灾煞: '/shensha-icons/zaisha.png',
+  天赦贵人: '/shensha-icons/tianshe-guiren.png',
+  咸池: '/shensha-icons/xianchi.png',
+  孤鸾: '/shensha-icons/guluan.png',
+  天医: '/shensha-icons/tianyi.png',
+  金神: '/shensha-icons/jinshen.png',
+  天罗地网: '/shensha-icons/tianluo-diwang.png',
+  元辰: '/shensha-icons/yuanchen.png',
+  阴差阳错: '/shensha-icons/yincha-yangcuo.png',
+  飞刃: '/shensha-icons/feiren.png',
+  十恶大败: '/shensha-icons/shie-dabai.png',
+  六秀: '/shensha-icons/liuxiu.png',
+  六厄: '/shensha-icons/liue.png',
+  流霞: '/shensha-icons/liuxia.png',
+  童子煞: '/shensha-icons/tongzi-sha.png',
+  文曲: '/shensha-icons/wenqu.png',
+  华盖煞: '/shensha-icons/huagai-sha.png',
+  天魁天钺: '/shensha-icons/tiankui-tianyue.png',
+};
+
 export const SHENSHA_SHARE_DATA: Record<string, ShenshaShareData> = Object.fromEntries(
   RAW_SHENSHA.map(([name, tintKey, category, description]) => {
     const tint = TINTS[tintKey] || TINTS.qiTa;
-    return [name, { name, category, description, miniLabel: '我的神煞', ...tint }];
+    return [name, { name, category, description, miniLabel: '我的神煞', image: SHENSHA_IMAGES[name], ...tint }];
   })
 );
 
