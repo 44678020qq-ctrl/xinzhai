@@ -3,9 +3,15 @@
 import { useId } from "react";
 
 interface WuxingRadarChartProps {
-  wuxingStrength: Record<string, number>;
+  wuxingStrength?: Record<string, number>;
+  wood?: number;
+  fire?: number;
+  earth?: number;
+  metal?: number;
+  water?: number;
   size?: number;
   dayType?: string;
+  dayMaster?: string;
 }
 
 const WX_ORDER = ["木", "火", "土", "金", "水"] as const;
@@ -85,18 +91,48 @@ function clamp(value: number, min: number, max: number) {
 
 function getAreaScale(wx: string, percent: number) {
   const base = TEMPLATE_PERCENT[wx] || 20;
-  return clamp(1 + ((percent - base) / 100) * 0.22, 0.94, 1.06);
+  return clamp(1 + ((percent - base) / 100) * 1.25, 0.78, 1.48);
 }
 
-export default function WuxingRadarChart({
-  wuxingStrength,
-  size = 286,
-  dayType,
-}: WuxingRadarChartProps) {
+function getAreaShift(wx: string, percent: number) {
+  const base = TEMPLATE_PERCENT[wx] || 20;
+  const delta = clamp((percent - base) / 20, -1, 1);
+  const shifts: Record<string, { x: number; y: number }> = {
+    木: { x: 0, y: -8 },
+    火: { x: 9, y: -2 },
+    土: { x: 8, y: 7 },
+    金: { x: -4, y: 8 },
+    水: { x: -10, y: 9 },
+  };
+  const shift = shifts[wx] || { x: 0, y: 0 };
+  return { x: shift.x * delta, y: shift.y * delta };
+}
+
+function resolveWuxingStrength(props: WuxingRadarChartProps) {
+  const fromProps = {
+    木: props.wood,
+    火: props.fire,
+    土: props.earth,
+    金: props.metal,
+    水: props.water,
+  };
+  const hasEnglishProps = Object.values(fromProps).some((value) => typeof value === "number");
+  if (!hasEnglishProps) return props.wuxingStrength || {};
+  return {
+    木: fromProps.木 ?? props.wuxingStrength?.木 ?? 0,
+    火: fromProps.火 ?? props.wuxingStrength?.火 ?? 0,
+    土: fromProps.土 ?? props.wuxingStrength?.土 ?? 0,
+    金: fromProps.金 ?? props.wuxingStrength?.金 ?? 0,
+    水: fromProps.水 ?? props.wuxingStrength?.水 ?? 0,
+  };
+}
+
+export default function WuxingRadarChart(props: WuxingRadarChartProps) {
+  const { size = 286, dayType, dayMaster } = props;
   const id = useId().replace(/:/g, "");
-  const items = normalizeStrength(wuxingStrength);
+  const items = normalizeStrength(resolveWuxingStrength(props));
   const byWx = Object.fromEntries(items.map((item) => [item.wx, item]));
-  const centerLabel = dayType || [...items].sort((a, b) => b.percent - a.percent)[0]?.wx || "能量";
+  const centerLabel = dayMaster || dayType || [...items].sort((a, b) => b.percent - a.percent)[0]?.wx || "能量";
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -158,11 +194,12 @@ export default function WuxingRadarChart({
 
           {REGION_RENDER_ORDER.map((wx) => {
             const item = byWx[wx];
-            const emphasis = 0.84 + Math.min(0.12, item.percent / 220);
+            const emphasis = 0.76 + Math.min(0.2, item.percent / 180);
             const anchor = REGION_ANCHOR[wx];
             const scale = getAreaScale(wx, item.percent);
+            const shift = getAreaShift(wx, item.percent);
             return (
-              <g key={wx} transform={`translate(${anchor.x} ${anchor.y}) scale(${scale}) translate(${-anchor.x} ${-anchor.y})`}>
+              <g key={wx} transform={`translate(${shift.x} ${shift.y}) translate(${anchor.x} ${anchor.y}) scale(${scale}) translate(${-anchor.x} ${-anchor.y})`}>
                 <path
                   d={REGION_PATH[wx]}
                   fill={`url(#${id}-${wx})`}
