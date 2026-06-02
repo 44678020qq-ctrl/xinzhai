@@ -354,24 +354,18 @@ function CardReveal({
               transform: 'rotateY(180deg)',
             }}
           >
-            <div className="mb-5 flex w-full justify-center">
+            <div className="flex w-full justify-center">
               {image ? (
                 <img
                   src={image}
                   alt={name}
-                  className="w-[240px] max-w-full object-contain"
+                  className="w-[248px] max-w-full object-contain"
                   draggable={false}
                 />
               ) : (
                 <span className="h-28 w-28 text-ink/80" dangerouslySetInnerHTML={{ __html: svgIcon }} />
               )}
             </div>
-            <h3 className="text-[26px] font-medium leading-tight text-ink">{name}</h3>
-            <p className="mt-3 text-[12px] leading-5 text-sub">{position}</p>
-            <p className="mt-5 text-[14px] leading-7 text-ink-2">{description}</p>
-            {warning && (
-              <p className="mt-4 text-[12px] leading-5 text-sub">{warning}</p>
-            )}
             {MAJOR_AUSPICIOUS.includes(name) && (
               <button
                 type="button"

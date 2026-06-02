@@ -43,19 +43,19 @@ const TEMPLATE_PERCENT: Record<string, number> = {
 const REGION_RENDER_ORDER = ["水", "木", "火", "土", "金"] as const;
 
 const REGION_PATH: Record<string, string> = {
-  木: "M 45 56 C 70 26, 116 21, 145 44 C 162 58, 156 76, 138 86 C 116 99, 86 91, 62 79 C 49 72, 40 64, 45 56 Z",
-  火: "M 140 43 C 177 49, 201 76, 194 111 C 187 146, 156 154, 130 132 C 111 116, 108 96, 123 78 C 136 63, 151 57, 140 43 Z",
-  土: "M 127 128 C 153 109, 189 124, 196 153 C 203 183, 174 204, 145 193 C 119 184, 107 148, 127 128 Z",
-  金: "M 72 158 C 92 139, 123 147, 137 180 C 118 205, 76 205, 55 183 C 45 172, 55 164, 72 158 Z",
-  水: "M 37 77 C 59 51, 96 62, 117 96 C 134 124, 119 159, 86 176 C 57 192, 24 178, 17 147 C 11 120, 20 94, 37 77 Z",
+  木: "M 31 63 C 60 31, 113 24, 150 44 C 166 53, 160 78, 139 90 C 114 104, 82 96, 51 86 C 31 80, 18 73, 31 63 Z",
+  火: "M 137 43 C 178 48, 207 76, 202 116 C 198 151, 165 163, 138 136 C 116 114, 114 91, 130 74 C 144 59, 159 55, 137 43 Z",
+  土: "M 126 130 C 154 112, 193 122, 202 153 C 212 185, 183 208, 151 198 C 123 189, 105 151, 126 130 Z",
+  金: "M 74 154 C 100 137, 132 147, 149 179 C 135 210, 88 216, 56 190 C 39 176, 51 162, 74 154 Z",
+  水: "M 31 84 C 55 58, 95 66, 118 98 C 140 128, 123 168, 88 189 C 55 208, 23 185, 18 151 C 14 124, 17 100, 31 84 Z",
 };
 
 const LABEL_POS: Record<string, { x: number; y: number }> = {
-  木: { x: 95, y: 62 },
-  火: { x: 164, y: 91 },
-  土: { x: 165, y: 159 },
-  金: { x: 91, y: 184 },
-  水: { x: 57, y: 128 },
+  木: { x: 95, y: 69 },
+  火: { x: 166, y: 99 },
+  土: { x: 165, y: 160 },
+  金: { x: 91, y: 185 },
+  水: { x: 58, y: 132 },
 };
 
 const REGION_ANCHOR: Record<string, { x: number; y: number }> = {
@@ -91,7 +91,7 @@ function clamp(value: number, min: number, max: number) {
 
 function getAreaScale(wx: string, percent: number) {
   const base = TEMPLATE_PERCENT[wx] || 20;
-  return clamp(1 + ((percent - base) / 100) * 1.25, 0.78, 1.48);
+  return clamp(1 + ((percent - base) / 100) * 0.95, 0.82, 1.36);
 }
 
 function getAreaShift(wx: string, percent: number) {
@@ -186,7 +186,7 @@ export default function WuxingRadarChart(props: WuxingRadarChartProps) {
         </defs>
 
         <circle cx="120" cy="120" r="103" fill="rgba(252,248,241,0.78)" filter={`url(#${id}-shadow)`} />
-        <circle cx="120" cy="120" r="98" fill="#FBF7EF" stroke="#E1D5BB" strokeWidth="2.4" />
+        <circle cx="120" cy="120" r="99" fill="#FBF7EF" stroke="#E1D5BB" strokeWidth="2.2" />
 
         <g clipPath={`url(#${id}-orb-clip)`}>
           <rect x="24" y="24" width="192" height="192" fill="#FBF7EF" />
@@ -205,7 +205,7 @@ export default function WuxingRadarChart(props: WuxingRadarChartProps) {
                   fill={`url(#${id}-${wx})`}
                   opacity={item.percent <= 2 ? 0.42 : emphasis}
                   stroke="#FBF7EF"
-                  strokeWidth="9.5"
+                  strokeWidth="6.5"
                   strokeLinejoin="round"
                   filter={`url(#${id}-watercolor)`}
                 />
@@ -213,9 +213,9 @@ export default function WuxingRadarChart(props: WuxingRadarChartProps) {
             );
           })}
 
-          <path d="M 34 96 C 55 83, 81 83, 105 99" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="10" strokeLinecap="round" />
-          <path d="M 139 78 C 159 82, 173 96, 178 115" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="9" strokeLinecap="round" />
-          <path d="M 49 146 C 70 159, 94 159, 114 145" fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="8" strokeLinecap="round" />
+          <path d="M 35 95 C 59 83, 86 86, 109 102" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="7" strokeLinecap="round" />
+          <path d="M 137 79 C 160 84, 176 99, 181 119" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="7" strokeLinecap="round" />
+          <path d="M 48 148 C 71 161, 96 159, 116 145" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="6" strokeLinecap="round" />
 
           <circle cx="120" cy="120" r="31" fill="rgba(252,248,241,0.95)" stroke="rgba(230,220,201,0.95)" strokeWidth="1.4" />
         </g>
