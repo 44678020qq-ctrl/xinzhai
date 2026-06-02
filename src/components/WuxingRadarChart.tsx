@@ -49,54 +49,54 @@ const BLOB_LAYOUT: Record<string, {
   labelY: number;
 }> = {
   木: {
-    left: 55,
-    top: 23,
-    width: 108,
-    height: 77,
-    rotate: -5,
-    radius: "46% 54% 55% 45% / 44% 43% 57% 56%",
-    labelX: 102,
-    labelY: 68,
+    left: 48,
+    top: 8,
+    width: 143,
+    height: 108,
+    rotate: -4,
+    radius: "50% 46% 62% 42% / 45% 58% 42% 54%",
+    labelX: 107,
+    labelY: 70,
   },
   火: {
-    left: 128,
-    top: 47,
-    width: 91,
-    height: 114,
-    rotate: 8,
-    radius: "42% 58% 49% 51% / 50% 42% 58% 50%",
-    labelX: 169,
-    labelY: 104,
+    left: 133,
+    top: 35,
+    width: 111,
+    height: 155,
+    rotate: 10,
+    radius: "44% 58% 46% 55% / 48% 39% 62% 54%",
+    labelX: 184,
+    labelY: 108,
   },
   土: {
     left: 139,
-    top: 130,
-    width: 82,
-    height: 79,
-    rotate: 12,
-    radius: "55% 45% 42% 58% / 45% 51% 49% 55%",
-    labelX: 169,
-    labelY: 163,
+    top: 135,
+    width: 105,
+    height: 86,
+    rotate: 11,
+    radius: "54% 43% 42% 61% / 45% 54% 48% 58%",
+    labelX: 184,
+    labelY: 170,
   },
   金: {
-    left: 72,
-    top: 158,
-    width: 86,
-    height: 65,
-    rotate: -9,
-    radius: "44% 56% 55% 45% / 48% 51% 49% 52%",
-    labelX: 100,
-    labelY: 189,
+    left: 78,
+    top: 166,
+    width: 108,
+    height: 76,
+    rotate: -10,
+    radius: "44% 58% 56% 44% / 47% 54% 48% 55%",
+    labelX: 122,
+    labelY: 200,
   },
   水: {
-    left: 17,
-    top: 75,
-    width: 123,
-    height: 138,
+    left: -10,
+    top: 57,
+    width: 176,
+    height: 176,
     rotate: -10,
-    radius: "58% 42% 48% 52% / 44% 55% 45% 56%",
-    labelX: 58,
-    labelY: 134,
+    radius: "58% 42% 52% 48% / 43% 58% 44% 57%",
+    labelX: 62,
+    labelY: 143,
   },
 };
 
@@ -144,23 +144,24 @@ function resolveWuxingStrength(props: WuxingRadarChartProps) {
 
 function getBlobScale(wx: string, percent: number) {
   const base = TEMPLATE_PERCENT[wx] || 20;
-  return clamp(Math.sqrt((percent + 1) / (base + 1)), 0.18, 1.72);
+  if (percent <= 0) return 0.08;
+  return clamp(0.22 + Math.sqrt(percent / base) * 0.78, 0.2, 1.62);
 }
 
 function getBlobOpacity(percent: number) {
-  if (percent <= 0) return 0.06;
-  return clamp(0.38 + percent / 95, 0.42, 0.9);
+  if (percent <= 0) return 0.02;
+  return clamp(0.5 + percent / 120, 0.52, 0.92);
 }
 
 function getFlowShift(wx: string, percent: number) {
   const base = TEMPLATE_PERCENT[wx] || 20;
   const delta = clamp((percent - base) / 28, -1, 1);
   const shifts: Record<string, { x: number; y: number }> = {
-    木: { x: 0, y: -9 },
-    火: { x: 8, y: -3 },
-    土: { x: 8, y: 8 },
-    金: { x: -6, y: 8 },
-    水: { x: -10, y: 10 },
+    木: { x: 0, y: -12 },
+    火: { x: 12, y: -2 },
+    土: { x: 12, y: 8 },
+    金: { x: -8, y: 11 },
+    水: { x: -13, y: 10 },
   };
   const shift = shifts[wx] || { x: 0, y: 0 };
   return { x: shift.x * delta, y: shift.y * delta };
@@ -194,17 +195,17 @@ export default function WuxingRadarChart(props: WuxingRadarChartProps) {
           width: size,
           height: size,
           background: "radial-gradient(circle at 45% 42%, #FFFDF8 0%, #FBF6EC 56%, #F2EAD9 100%)",
-          boxShadow: "0 18px 42px rgba(82, 70, 46, 0.09)",
+          boxShadow: "0 18px 42px rgba(82, 70, 46, 0.08)",
         }}
       >
-        <div className="absolute inset-[6px] rounded-full border-[7px] border-white/80" />
-        <div className="absolute inset-[14px] rounded-full border-[2px] border-[#D9CBAE]" />
+        <div className="absolute inset-[5px] rounded-full border-[7px] border-white/85" />
+        <div className="absolute inset-[13px] rounded-full border-[2px] border-[#D7C8A8]" />
         <div className="absolute inset-[17px] overflow-hidden rounded-full bg-[#FBF7EF]">
           <div
             className="absolute inset-0 opacity-[0.34]"
             style={{
               background:
-                "radial-gradient(circle at 18% 20%, rgba(206,188,146,.18), transparent 24%), radial-gradient(circle at 80% 68%, rgba(205,190,156,.16), transparent 28%), linear-gradient(120deg, rgba(255,255,255,.45), transparent 48%)",
+                "radial-gradient(circle at 18% 20%, rgba(206,188,146,.18), transparent 24%), radial-gradient(circle at 80% 68%, rgba(205,190,156,.16), transparent 28%), linear-gradient(120deg, rgba(255,255,255,.5), transparent 50%)",
             }}
           />
 
@@ -227,9 +228,10 @@ export default function WuxingRadarChart(props: WuxingRadarChartProps) {
                   opacity,
                   transform: `translate(${shift.x}px, ${shift.y}px) rotate(${layout.rotate}deg) scale(${scale})`,
                   transformOrigin: "50% 50%",
-                  background: `radial-gradient(circle at 36% 28%, rgba(255,255,255,.42) 0%, ${WX_COLOR[wx]} 50%, ${WX_COLOR[wx]} 100%)`,
-                  filter: "blur(.2px) saturate(.92)",
-                  boxShadow: `inset 0 0 22px rgba(255,255,255,.34), 0 0 16px ${WX_COLOR[wx]}33`,
+                  background: `radial-gradient(circle at 34% 26%, rgba(255,255,255,.5) 0%, ${WX_COLOR[wx]} 48%, ${WX_COLOR[wx]} 100%)`,
+                  border: "7px solid rgba(252, 248, 238, 0.86)",
+                  filter: "blur(.15px) saturate(.93)",
+                  boxShadow: `inset 0 0 28px rgba(255,255,255,.38), inset 0 -18px 24px rgba(92,72,44,.08), 0 0 18px ${WX_COLOR[wx]}2E`,
                 }}
               >
                 <div
@@ -243,9 +245,10 @@ export default function WuxingRadarChart(props: WuxingRadarChartProps) {
             );
           })}
 
-          <div className="absolute left-[56px] top-[92px] h-[20px] w-[88px] -rotate-[8deg] rounded-full bg-[#FBF7EF]/80 blur-[2px]" />
-          <div className="absolute left-[119px] top-[105px] h-[18px] w-[78px] rotate-[28deg] rounded-full bg-[#FBF7EF]/76 blur-[2px]" />
-          <div className="absolute left-[79px] top-[154px] h-[18px] w-[84px] rotate-[-18deg] rounded-full bg-[#FBF7EF]/74 blur-[2px]" />
+          <div className="absolute left-[46px] top-[99px] h-[26px] w-[122px] -rotate-[11deg] rounded-full bg-[#FBF7EF]/82 blur-[2px]" />
+          <div className="absolute left-[119px] top-[107px] h-[24px] w-[106px] rotate-[32deg] rounded-full bg-[#FBF7EF]/78 blur-[2px]" />
+          <div className="absolute left-[84px] top-[158px] h-[25px] w-[108px] rotate-[-19deg] rounded-full bg-[#FBF7EF]/78 blur-[2px]" />
+          <div className="absolute left-[119px] top-[63px] h-[20px] w-[76px] rotate-[20deg] rounded-full bg-[#FBF7EF]/62 blur-[2px]" />
 
           {WX_ORDER.map((wx) => {
             const item = byWx[wx];
