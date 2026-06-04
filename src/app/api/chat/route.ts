@@ -51,18 +51,17 @@ ${jiaoZiExamples}
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, bazi, history = [] } = body
+    const { message, bazi, chatTarget, history = [] } = body
+    const cleanMessage = typeof message === 'string' ? message.trim() : ''
+    if (!cleanMessage) {
+      return NextResponse.json({ reply: "我在，想说什么都可以。" })
+    }
     
     // 🔴 工单-01: Hard List 前置拦截（在一切生成之前）
-    const hardListResult = checkHardList(message)
+    const hardListResult = checkHardList(cleanMessage)
     if (hardListResult.blocked) {
       return NextResponse.json({
         reply: hardListResult.reply,
-        reasoning: [{
-          step: "安全拦截",
-          content: `命中红线: ${hardListResult.category}，已走拒答模板`
-        }],
-        verdict: "安全拦截",
         blocked: true,
         blockedCategory: hardListResult.category
       })
@@ -99,7 +98,7 @@ export async function POST(request: NextRequest) {
     let reply
     try {
       console.log('[chat] step1: 准备调用LLM')
-      const llmResult = await callLLM(systemPrompt, message, history)
+      const llmResult = await callLLM(systemPrompt, cleanMessage, history)
       console.log('[chat] step2: LLM返回成功, model=', llmResult?.model)
       
       reply = {
@@ -116,36 +115,32 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
       // LLM调用失败，fallback到规则模板
       console.error("LLM 调用失败，fallback到模板:", error?.message || error)
-      reply = generateReply(message, bazi, matchedJiaoZi, history)
+      reply = generateReply(cleanMessage, bazi, matchedJiaoZi, history)
       reply.reasoning?.unshift({ step: "降级", content: "LLM调用失败，已降级到规则模板" })
     }
     
-    // 保存对话记录（非阻塞）
-    if (user) {
+    // 保存真人消息（非阻塞）。AI 回复不写入 chat_messages，避免伪装成对方真人。
+    const targetId = typeof chatTarget?.id === 'string' ? chatTarget.id : ''
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetId)
+    if (user && isUuid && !chatTarget?.isMock) {
       try {
         await supabase.from('chat_messages').insert({
-          user_id: user.id,
-          role: 'user',
-          content: message
-        })
-        await supabase.from('chat_messages').insert({
-          user_id: user.id,
-          role: 'assistant',
-          content: reply.reply
+          sender_id: user.id,
+          receiver_id: targetId,
+          content: cleanMessage,
+          is_read: false,
         })
       } catch (e) {
         console.warn('保存对话记录失败:', e)
       }
     }
     
-    return NextResponse.json(reply)
+    return NextResponse.json({ reply: reply.reply })
   } catch (error) {
     console.error('AI 对话失败:', error)
     // 即使出错也返回一个友好回复
     return NextResponse.json({ 
       reply: "我在想，但需要一点时间。能再说一次吗？",
-      reasoning: [{ step: "异常", content: String(error) }],
-      verdict: "系统繁忙"
     })
   }
 }
