@@ -14,6 +14,7 @@ interface ChatTarget {
   id: string;
   name: string;
   wuxing: string;
+  isMock?: boolean;
 }
 
 function now() {
@@ -21,39 +22,34 @@ function now() {
   return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
 
-/** 自然开场白（非能量查询腔）*/
-const GREETING_POOL = [
-  "你好，聊聊？",
-  "在吗？",
-  "今天怎么样？",
-  "随便聊聊。",
-  "你好 👋",
-];
+function readChatTarget(): ChatTarget | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.sessionStorage.getItem("xinzhai_chat_target");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function initialMessages(target: ChatTarget | null): Message[] {
+  if (!target) return [];
+  return [{
+    id: "m1",
+    from: "other",
+    time: now(),
+    text: `和 ${target.name || target.wuxing} 的对话开始了`,
+  }];
+}
 
 export default function ChatPage() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatTarget] = useState<ChatTarget | null>(() => readChatTarget());
+  const [messages, setMessages] = useState<Message[]>(() => initialMessages(readChatTarget()));
   const [input, setInput] = useState("");
-  const [chatTarget, setChatTarget] = useState<ChatTarget | null>(null);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const raw = sessionStorage.getItem("xinzhai_chat_target");
-    let target: ChatTarget | null = null;
-    if (raw) {
-      try { target = JSON.parse(raw); setChatTarget(target); } catch {}
-    }
-
-    if (!target) return; // 无匹配对象，不塞假消息
-
-    const t = now();
-    setMessages([{
-      id: "m1", from: "other", time: t,
-      text: `和 ${target.name || target.wuxing} 的对话开始了`,
-    }]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
