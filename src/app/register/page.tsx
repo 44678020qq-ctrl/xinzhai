@@ -244,7 +244,7 @@ export default function RegisterPage() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               className="w-full px-4 py-3 rounded-2xl border border-line bg-card text-sm text-ink placeholder:text-line focus:outline-none focus:border-accent transition-colors"
               placeholder="如何称呼你"
             />
@@ -258,7 +258,7 @@ export default function RegisterPage() {
                 <button
                   key={g}
                   type="button"
-                  onClick={() => setFormData({ ...formData, gender: g })}
+                  onClick={() => setFormData((prev) => ({ ...prev, gender: g }))}
                   className={`flex-1 py-3 rounded-2xl text-sm font-medium transition-all duration-200 ${
                     formData.gender === g
                       ? 'bg-accent text-white shadow-sm'
@@ -284,7 +284,7 @@ export default function RegisterPage() {
                   key={f.key}
                   type="number"
                   value={formData[f.key as keyof typeof formData] as string}
-                  onChange={(e) => setFormData({ ...formData, [f.key]: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, [f.key]: e.target.value }))}
                   className="px-3 py-3 rounded-2xl border border-line bg-card text-sm text-ink text-center placeholder:text-line focus:outline-none focus:border-accent transition-colors"
                   placeholder={f.ph}
                   min={f.min}
@@ -313,7 +313,7 @@ export default function RegisterPage() {
                 <input
                   type="number"
                   value={formData.birth_hour}
-                  onChange={(e) => { setSelectedShichen(null); setFormData({ ...formData, birth_hour: e.target.value }) }}
+                  onChange={(e) => { setSelectedShichen(null); setFormData((prev) => ({ ...prev, birth_hour: e.target.value })) }}
                   className="px-3 py-3 rounded-2xl border border-line bg-card text-sm text-ink text-center placeholder:text-line focus:outline-none focus:border-accent transition-colors"
                   placeholder="时（0-23）"
                   min={0} max={23}
@@ -321,7 +321,7 @@ export default function RegisterPage() {
                 <input
                   type="number"
                   value={formData.birth_minute}
-                  onChange={(e) => setFormData({ ...formData, birth_minute: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, birth_minute: e.target.value }))}
                   className="px-3 py-3 rounded-2xl border border-line bg-card text-sm text-ink text-center placeholder:text-line focus:outline-none focus:border-accent transition-colors"
                   placeholder="分"
                   min={0} max={59}
@@ -360,7 +360,7 @@ export default function RegisterPage() {
             <input
               type="checkbox"
               checked={formData.is_lunar}
-              onChange={(e) => setFormData({ ...formData, is_lunar: e.target.checked })}
+              onChange={(e) => setFormData((prev) => ({ ...prev, is_lunar: e.target.checked }))}
               className="sr-only"
             />
             <span className="text-xs text-sub font-light">这是农历日期</span>
