@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 // 入斋是一次性流程，不占 tab
-const NO_NAV_PATHS = ["/", "/register"];
+const NO_NAV_PATHS = ["/", "/register", "/privacy", "/terms", "/data-deletion"];
 
 const tabs = [
   { href: "/card", label: "命签", paths: ["/card"] },
