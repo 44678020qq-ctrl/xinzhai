@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+
+export const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -48,10 +52,14 @@ export interface UserProfile {
 export interface Match {
   id: string
   created_at: string
-  user_id: string
-  target_id: string
+  user_a: string
+  user_b: string
   score: number
-  match_type: string  // '生我' | '我生' | '同类' | '克我' | '我克'
+  role: string
+  tier: string | null
+  special_fate: string | null
+  reason: string | null
+  match_type: string | null  // 兼容旧字段
   is_mutual: boolean  // 是否双向匹配
   status: 'pending' | 'accepted' | 'rejected'
 }
@@ -59,8 +67,26 @@ export interface Match {
 export interface ChatMessage {
   id: string
   created_at: string
-  match_id: string
+  match_id: string | null
   sender_id: string
+  receiver_id: string
   content: string
   is_read: boolean
+}
+
+export interface PublicMatchProfile {
+  id: string
+  display_name: string | null
+  bazi_year_gan: string
+  bazi_year_zhi: string
+  bazi_month_gan: string
+  bazi_month_zhi: string
+  bazi_day_gan: string
+  bazi_day_zhi: string
+  bazi_hour_gan: string | null
+  bazi_hour_zhi: string | null
+  day_master_wuxing: string
+  personality_tags: string[] | null
+  personality_desc: string | null
+  updated_at: string
 }
