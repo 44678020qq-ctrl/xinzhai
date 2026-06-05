@@ -11,7 +11,7 @@
     "deployPath": "/",
     "envVariables": {
       "NEXT_PUBLIC_SUPABASE_URL": "https://hcmjwmahnrfktxptkewx.supabase.co",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjbWp3bWFobnJma3R4cHRrZXd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNTg5NzMsImV4cCI6MjA5NDczNDk3M30.A23ot-6gYAefNaxxrvIqo4cN-6JTed1h8DghkY1fRRA"
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_1sIW3_dEBVNvHlGxB1x9cQ_tPvulHN4"
     }
   }
 }
