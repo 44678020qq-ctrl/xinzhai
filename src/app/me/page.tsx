@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { InkMark } from "@/components/InkMark";
 
 function getWuxingColor(wx: string): string {
@@ -105,6 +106,12 @@ export default function MePage() {
               {item.label}
             </button>
           ))}
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] text-sub">
+          <Link href="/privacy" className="hover:text-accent">隐私政策</Link>
+          <Link href="/terms" className="hover:text-accent">用户协议</Link>
+          <Link href="/data-deletion" className="hover:text-accent">数据删除</Link>
         </div>
 
         <button
